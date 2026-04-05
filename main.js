@@ -193,19 +193,18 @@ ipcMain.handle('open-platform', async (event, { platformId }) => {
       aiBrowserWindow.close();
     }
 
-    // 创建新窗口加载AI平台 - 使用独立窗口，不绑定parent，避免卡住
+    // 创建新窗口加载AI平台 - 使用和主窗口一致的配置
     aiBrowserWindow = new BrowserWindow({
       width: 1200,
       height: 800,
       title: `${platform.name} - manju 内置浏览器`,
       show: true,
       webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
+        nodeIntegration: true,
+        contextIsolation: false,
+        enableRemoteModule: true,
         webSecurity: false,
-        allowRunningInsecureContent: true,
-        sandbox: false,
-        preload: path.join(__dirname, 'preload.js')
+        allowRunningInsecureContent: true
       }
     });
 
