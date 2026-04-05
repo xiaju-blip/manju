@@ -671,6 +671,7 @@
       console.log('选择文本平台:', id, name);
       selectedTextPlatform = id;
       currentPlatformId = id;
+      activeTab = 'manga';
       document.querySelectorAll('#textPlatformList .platform-card').forEach(card => {
         card.classList.remove('selected');
       });
@@ -684,6 +685,7 @@
       console.log('选择图片平台:', id, name);
       selectedImagePlatform = id;
       currentPlatformId = id;
+      activeTab = 'image';
       document.querySelectorAll('#imagePlatformList .platform-card').forEach(card => {
         card.classList.remove('selected');
       });
@@ -697,6 +699,7 @@
       console.log('选择视频平台:', id, name);
       selectedVideoPlatform = id;
       currentPlatformId = id;
+      activeTab = 'video';
       document.querySelectorAll('#videoPlatformList .platform-card').forEach(card => {
         card.classList.remove('selected');
       });
