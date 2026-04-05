@@ -12,7 +12,8 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      enableRemoteModule: true
+      enableRemoteModule: true,
+      preload: path.join(__dirname, 'preload.js')
     },
     icon: path.join(__dirname, 'assets', 'icon.png')
   });
