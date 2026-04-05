@@ -11,9 +11,8 @@ function createWindow() {
     height: 900,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: true,
+      contextIsolation: false,
       enableRemoteModule: true,
-      preload: path.join(__dirname, 'preload.js'),
       webSecurity: false,
       allowRunningInsecureContent: true
     },
@@ -205,7 +204,8 @@ ipcMain.handle('open-platform', async (event, { platformId }) => {
         contextIsolation: true,
         webSecurity: false,
         allowRunningInsecureContent: true,
-        sandbox: false
+        sandbox: false,
+        preload: path.join(__dirname, 'preload.js')
       }
     });
 
