@@ -379,7 +379,7 @@
         <!-- 漫剧生成标签 -->
         <div id="tab-manga" class="tab-content active">
           <div class="form-group">
-            <label>选择文本AI平台：</label>
+            <label>选择文本AI平台：<small style="color: #dc3545">（必须先点击选择一个平台）</small></label>
             <div id="textPlatformList">
               <!-- 动态加载 -->
             </div>
@@ -410,7 +410,7 @@
           </div>
 
           <div class="action-buttons">
-            <button id="openPlatformBtn" class="btn btn-info" onclick="openCurrentPlatform()">
+            <button id="openPlatformBtn" class="btn btn-info" onclick="openCurrentPlatform()" disabled>
               🌐 打开平台
             </button>
             <button id="generateBtn" class="btn btn-success" onclick="generateManga()" disabled>
@@ -439,7 +439,7 @@
         <!-- 文生图标签 -->
         <div id="tab-image" class="tab-content">
           <div class="form-group">
-            <label>选择文生图平台：</label>
+            <label>选择文生图平台：<small style="color: #dc3545">（必须先点击选择一个平台）</small></label>
             <div id="imagePlatformList">
               <!-- 动态加载 -->
             </div>
@@ -488,7 +488,7 @@
         <!-- 图生视频标签 -->
         <div id="tab-video" class="tab-content">
           <div class="form-group">
-            <label>选择视频生成平台：</label>
+            <label>选择视频生成平台：<small style="color: #dc3545">（必须先点击选择一个平台）</small></label>
             <div id="videoPlatformList">
               <!-- 动态加载 -->
             </div>

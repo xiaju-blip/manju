@@ -255,6 +255,9 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
 
     const webContents = aiBrowserWindow.webContents;
 
+    // 对prompt进行转义
+    const escapedPrompt = prompt.replace(/\\/g, '\\\\').replace(/'/g, '\\\'').replace(/\n/g, '\\n');
+    
     const result = await webContents.executeJavaScript(`
       new Promise(async (resolve) => {
         try {
@@ -281,7 +284,7 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           
           // 填充提示词
           if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
-            input.value = '${prompt.replace(/\\n/g, '\\\\n').replace(/'/g, "\\\\'")}';
+            input.value = \`${escapedPrompt}\`;
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
           }
