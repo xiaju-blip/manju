@@ -19,7 +19,6 @@ function createWindow() {
     icon: path.join(__dirname, 'assets', 'icon.png')
   });
 
-  // 打开开发者工具方便调试
   mainWindow.webContents.openDevTools();
   mainWindow.loadFile('index.html');
 
@@ -33,7 +32,6 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // 允许跨域
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
@@ -43,7 +41,6 @@ app.whenReady().then(() => {
     });
   });
   
-  // 禁用SSL证书验证，解决SSL握手错误
   app.commandLine.appendSwitch('ignore-certificate-errors');
   app.commandLine.appendSwitch('ignore-ssl-errors');
   app.commandLine.appendSwitch('allow-insecure-localhost');
@@ -62,7 +59,6 @@ app.on('activate', function () {
   if (mainWindow === null) createWindow();
 });
 
-// 支持的文本AI平台列表
 const textPlatforms = {
   deepseek: {
     name: 'DeepSeek',
@@ -111,7 +107,6 @@ const textPlatforms = {
   }
 };
 
-// 支持的文生图平台
 const imagePlatforms = {
   tudou: {
     name: '土豆AI绘图',
@@ -147,7 +142,6 @@ const imagePlatforms = {
   }
 };
 
-// 支持的图生视频平台
 const videoPlatforms = {
   pika: {
     name: 'Pika Labs',
@@ -177,10 +171,8 @@ const videoPlatforms = {
   }
 };
 
-// 合并所有平台
 const allPlatforms = { ...textPlatforms, ...imagePlatforms, ...videoPlatforms };
 
-// 打开内置浏览器窗口加载AI平台
 ipcMain.handle('open-platform', async (event, { platformId }) => {
   try {
     const platform = allPlatforms[platformId];
@@ -188,16 +180,14 @@ ipcMain.handle('open-platform', async (event, { platformId }) => {
       return { success: false, error: '不支持的平台' };
     }
 
-    // 如果已经有窗口，关闭它
     if (aiBrowserWindow && !aiBrowserWindow.isDestroyed()) {
       aiBrowserWindow.close();
     }
 
-    // 创建新窗口加载AI平台 - 使用和主窗口一致的配置
     aiBrowserWindow = new BrowserWindow({
       width: 1200,
       height: 800,
-      title: `${platform.name} - manju 内置浏览器',
+      title: platform.name + ' - manju 内置浏览器',
       show: true,
       webPreferences: {
         nodeIntegration: true,
@@ -208,10 +198,8 @@ ipcMain.handle('open-platform', async (event, { platformId }) => {
       }
     });
 
-    // 打开开发者工具方便调试
     aiBrowserWindow.webContents.openDevTools();
     
-    // 等待页面加载完成后显示
     aiBrowserWindow.on('ready-to-show', () => {
       aiBrowserWindow.show();
     });
@@ -234,7 +222,6 @@ ipcMain.handle('open-platform', async (event, { platformId }) => {
   }
 });
 
-// 获取页面内容（文本生成结果）
 ipcMain.handle('extract-result', async (event, { platformId }) => {
   try {
     const platform = allPlatforms[platformId];
@@ -244,30 +231,27 @@ ipcMain.handle('extract-result', async (event, { platformId }) => {
 
     const webContents = aiBrowserWindow.webContents;
     
-    // 执行JS提取结果
-    const result = await webContents.executeJavaScript(`
-      new Promise((resolve) => {
-        const selector = '${platform.outputSelector}';
-        const el = document.querySelector(selector);
-        if (!el) {
-          resolve({ success: false, error: '找不到结果元素' });
-          return;
-        }
-        resolve({ 
-          success: true, 
-          content: el.textContent,
-          html: el.innerHTML
-        });
-      });
-    `);
-
+    const js = 'new Promise((resolve) => {' +
+      'const selector = \'' + platform.outputSelector + '\';' +
+      'const el = document.querySelector(selector);' +
+      'if (!el) {' +
+      '  resolve({ success: false, error: \"找不到结果元素\" });' +
+      '  return;' +
+      '}' +
+      'resolve({ ' +
+      '  success: true, ' +
+      '  content: el.textContent, ' +
+      '  html: el.innerHTML ' +
+      '});' +
+    '});';
+    
+    const result = await webContents.executeJavaScript(js);
     return result;
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-// 在AI页面自动填充提示词并提交
 ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
   try {
     console.log('auto-submit 开始:', { platformId, promptLength: prompt.length });
@@ -283,146 +267,114 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
 
     const webContents = aiBrowserWindow.webContents;
 
-    // 对prompt进行转义 - 使用更安全的方式
     const escapedPrompt = JSON.stringify(prompt);
     
-    // 预先拆分选择器避免JS字符串内变量问题
     const inputSelectorsList = platform.inputSelector.split(', ');
     const submitSelectorsList = platform.submitSelector.split(', ');
     
-    let jsCode = `
-      new Promise(async (resolve) => {
-        console.log('auto-submit 开始执行JavaScript');
-        try {
-          const inputSelector = '${platform.inputSelector}';
-          const submitSelector = '${platform.submitSelector}';
-          console.log('选择器:', { inputSelector, submitSelector });
-          
-          // 等待页面完全加载 - 通义千问加载较慢
-          await new Promise(resolve => setTimeout(resolve, 6000));
-          
-          let input = null;
-          // 尝试多个选择器
-          const inputSelectors = [${inputSelectorsList.map(s => `'${s}'`).join(', ')}];
-          for (const sel of inputSelectors) {
-            input = document.querySelector(sel);
-            console.log('尝试选择器', sel, '找到:', !!input);
-            if (input) break;
-          }
-          
-          // 如果还是找不到，等待更长时间再试一次
-          if (!input) {
-            await new Promise(resolve => setTimeout(resolve, 4000));
-            for (const sel of inputSelectors) {
-              input = document.querySelector(sel);
-              console.log('重试选择器', sel, '找到:', !!input);
-              if (input) break;
-            }
-          }
-          
-          if (!input) {
-            console.log('找不到输入框');
-            resolve({ success: false, error: '找不到输入框，请等待页面完全加载后重试' });
-            return;
-          }
-          
-          // 填充提示词 - 使用JSON.parse保证正确
-          const prompt = ${escapedPrompt};
-          
-          // 聚焦并清空输入框
-          input.focus();
-          if (input.value !== undefined) {
-            input.value = '';
-          } else if (input.textContent !== undefined) {
-            input.textContent = '';
-          }
-          input.scrollIntoView({behavior: 'smooth', block: 'center'});
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // 逐字输入模拟真实输入，触发网站字数统计，这样发送按钮才会激活
-          console.log('开始逐字输入，长度: ' + prompt.length);
-          
-          // 对于 contenteditable div 尝试多种方式
-          if (input.isContentEditable) {
-            // 先清空
-            input.textContent = '';
-            await new Promise(resolve => setTimeout(resolve, 500));
-            // 逐字输入
-            for (let i = 0; i < prompt.length; i++) {
-              input.textContent += prompt[i];
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-              input.dispatchEvent(new Event('change', { bubbles: true }));
-              await new Promise(resolve => setTimeout(resolve, 3));
-            }
-          } else if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
-            // 清空
-            input.value = '';
-            await new Promise(resolve => setTimeout(resolve, 500));
-            // 逐字输入
-            for (let i = 0; i < prompt.length; i++) {
-              input.value += prompt[i];
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-              input.dispatchEvent(new Event('change', { bubbles: true }));
-              await new Promise(resolve => setTimeout(resolve, 3));
-            }
-          } else if (typeof input.innerHTML !== 'undefined') {
-            input.innerHTML = prompt;
-          }
-          
-          // 触发多个事件保证网站检测到输入完成
-          input.dispatchEvent(new Event('change', { bubbles: true }));
-          input.dispatchEvent(new Event('compositionstart', { bubbles: true }));
-          input.dispatchEvent(new Event('compositionend', { bubbles: true }));
-          input.dispatchEvent(new Event('keyup', { bubbles: true }));
-          input.dispatchEvent(new Event('keydown', { bubbles: true }));
-          input.dispatchEvent(new Event('click', { bubbles: true }));
-          console.log('提示词填充完成，长度: ' + prompt.length);
-          
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          // 点击提交按钮
-          let button = document.querySelector(submitSelector);
-          if (!button) {
-            const submitSelectors = [${submitSelectorsList.map(s => `'${s}'`).join(', ')}];
-            for (const sel of submitSelectors) {
-              button = document.querySelector(sel);
-              console.log('尝试按钮选择器', sel, '找到:', !!button);
-              if (button) break;
-            }
-          }
-          
-          // 如果还是找不到，重试一次
-          if (!button) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            const submitSelectors = [${submitSelectorsList.map(s => `'${s}'`).join(', ')}];
-            for (const sel of submitSelectors) {
-              button = document.querySelector(sel);
-              console.log('重试按钮选择器', sel, '找到:', !!button);
-              if (button) break;
-            }
-          }
-          
-          if (!button) {
-            console.log('找不到提交按钮');
-            resolve({ success: false, error: '找不到提交按钮，请等待页面完全加载后重试' });
-            return;
-          }
-          
-          console.log('点击提交按钮');
-          button.scrollIntoView({behavior: 'smooth', block: 'center'});
-          await new Promise(resolve => setTimeout(resolve, 500));
-          button.click();
-          // 有时候需要点击两次
-          setTimeout(() => button.click(), 500);
-          resolve({ success: true });
-        } catch (e) {
-          console.error('JavaScript执行错误:', e);
-          resolve({ success: false, error: e.message });
-        }
-      });
-    `;
+    const inputSelectorsStr = inputSelectorsList.map(s => `"${s.replace(/"/g, '\\"')}"`).join(', ');
+    const submitSelectorsStr = submitSelectorsList.map(s => `"${s.replace(/"/g, '\\"')}"`).join(', ');
     
-    const result = await webContents.executeJavaScript(jsCode);
+    const js = 
+      'new Promise(async (resolve) => {' +
+        'console.log("auto-submit 开始执行JavaScript");' +
+        'try {' +
+          'const inputSelector = "' + platform.inputSelector.replace(/"/g, '\\"') + '";' +
+          'const submitSelector = "' + platform.submitSelector.replace(/"/g, '\\"') + '";' +
+          'console.log("选择器:", { inputSelector, submitSelector });' +
+          'await new Promise(resolve => setTimeout(resolve, 6000));' +
+          'let input = null;' +
+          'const inputSelectors = [' + inputSelectorsStr + '];' +
+          'for (const sel of inputSelectors) {' +
+            'input = document.querySelector(sel);' +
+            'console.log("尝试选择器", sel, "找到:", !!input);' +
+            'if (input) break;' +
+          '}' +
+          'if (!input) {' +
+            'await new Promise(resolve => setTimeout(resolve, 4000));' +
+            'for (const sel of inputSelectors) {' +
+              'input = document.querySelector(sel);' +
+              'console.log("重试选择器", sel, "找到:", !!input);' +
+              'if (input) break;' +
+            '}' +
+          '}' +
+          'if (!input) {' +
+            'console.log("找不到输入框");' +
+            'resolve({ success: false, error: "找不到输入框，请等待页面完全加载后重试" });' +
+            'return;' +
+          '}' +
+          'const prompt = ' + escapedPrompt + ';' +
+          'input.focus();' +
+          'if (input.value !== undefined) {' +
+            'input.value = "";' +
+          '} else if (input.textContent !== undefined) {' +
+            'input.textContent = "";' +
+          '}' +
+          'input.scrollIntoView({behavior: "smooth", block: "center"});' +
+          'await new Promise(resolve => setTimeout(resolve, 1000));' +
+          'console.log("开始逐字输入，长度: " + prompt.length);' +
+          'if (input.isContentEditable) {' +
+            'input.textContent = "";' +
+            'await new Promise(resolve => setTimeout(resolve, 500));' +
+            'for (let i = 0; i < prompt.length; i++) {' +
+              'input.textContent += prompt[i];' +
+              'input.dispatchEvent(new Event("input", { bubbles: true }));' +
+              'input.dispatchEvent(new Event("change", { bubbles: true }));' +
+              'await new Promise(resolve => setTimeout(resolve, 3));' +
+            '}' +
+          '} else if (input.tagName === "TEXTAREA" || input.tagName === "INPUT") {' +
+            'input.value = "";' +
+            'await new Promise(resolve => setTimeout(resolve, 500));' +
+            'for (let i = 0; i < prompt.length; i++) {' +
+              'input.value += prompt[i];' +
+              'input.dispatchEvent(new Event("input", { bubbles: true }));' +
+              'input.dispatchEvent(new Event("change", { bubbles: true }));' +
+              'await new Promise(resolve => setTimeout(resolve, 3));' +
+            '}' +
+          '} else if (typeof input.innerHTML !== "undefined") {' +
+            'input.innerHTML = prompt;' +
+          '}' +
+          'input.dispatchEvent(new Event("change", { bubbles: true }));' +
+          'input.dispatchEvent(new Event("compositionstart", { bubbles: true }));' +
+          'input.dispatchEvent(new Event("compositionend", { bubbles: true }));' +
+          'input.dispatchEvent(new Event("keyup", { bubbles: true }));' +
+          'input.dispatchEvent(new Event("keydown", { bubbles: true }));' +
+          'input.dispatchEvent(new Event("click", { bubbles: true }));' +
+          'console.log("提示词填充完成，长度: " + prompt.length);' +
+          'await new Promise(resolve => setTimeout(resolve, 2000));' +
+          'let button = null;' +
+          'const submitSelectors = [' + submitSelectorsStr + '];' +
+          'for (const sel of submitSelectors) {' +
+            'button = document.querySelector(sel);' +
+            'console.log("尝试按钮选择器", sel, "找到:", !!button);' +
+            'if (button) break;' +
+          '}' +
+          'if (!button) {' +
+            'await new Promise(resolve => setTimeout(resolve, 2000));' +
+            'for (const sel of submitSelectors) {' +
+              'button = document.querySelector(sel);' +
+              'console.log("重试按钮选择器", sel, "找到:", !!button);' +
+              'if (button) break;' +
+            '}' +
+          '}' +
+          'if (!button) {' +
+            'console.log("找不到提交按钮");' +
+            'resolve({ success: false, error: "找不到提交按钮，请等待页面完全加载后重试" });' +
+            'return;' +
+          '}' +
+          'console.log("点击提交按钮");' +
+          'button.scrollIntoView({behavior: "smooth", block: "center"});' +
+          'await new Promise(resolve => setTimeout(resolve, 500));' +
+          'button.click();' +
+          'setTimeout(() => button.click(), 500);' +
+          'resolve({ success: true });' +
+        '} catch (e) {' +
+          'console.error("JavaScript执行错误:", e);' +
+          'resolve({ success: false, error: e.message });' +
+        '}' +
+      '});';
+    
+    const result = await webContents.executeJavaScript(js);
 
     console.log('auto-submit 执行结果:', result);
     return result;
@@ -432,7 +384,6 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
   }
 });
 
-// 提取生成的图片URL
 ipcMain.handle('extract-images', async (event, { platformId }) => {
   try {
     const platform = imagePlatforms[platformId];
@@ -442,31 +393,29 @@ ipcMain.handle('extract-images', async (event, { platformId }) => {
 
     const webContents = aiBrowserWindow.webContents;
 
-    const result = await webContents.executeJavaScript(`
-      new Promise((resolve) => {
-        const selector = '${platform.resultSelector}';
-        let images = document.querySelectorAll(selector);
-        if (!images || images.length === 0) {
-          const el = document.querySelector(selector);
-          if (el && el.tagName === 'IMG') {
-            images = [el];
-          } else {
-            resolve({ success: false, error: '找不到图片' });
-            return;
-          }
-        }
-        const urls = Array.from(images).map(img => img.src).filter(url => url);
-        resolve({ success: true, imageUrls: urls });
-      });
-    `);
+    const js = 'new Promise((resolve) => {' +
+      'const selector = \'' + platform.resultSelector + '\';' +
+      'let images = document.querySelectorAll(selector);' +
+      'if (!images || images.length === 0) {' +
+        'const el = document.querySelector(selector);' +
+        'if (el && el.tagName === "IMG") {' +
+          'images = [el];' +
+        '} else {' +
+          'resolve({ success: false, error: \"找不到图片\" });' +
+          'return;' +
+        '}' +
+      '}' +
+      'const urls = Array.from(images).map(img => img.src).filter(url => url);' +
+      'resolve({ success: true, imageUrls: urls });' +
+    '});';
 
+    const result = await webContents.executeJavaScript(js);
     return result;
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-// 提取视频URL
 ipcMain.handle('extract-video', async (event, { platformId }) => {
   try {
     const platform = videoPlatforms[platformId];
@@ -476,31 +425,29 @@ ipcMain.handle('extract-video', async (event, { platformId }) => {
 
     const webContents = aiBrowserWindow.webContents;
 
-    const result = await webContents.executeJavaScript(`
-      new Promise((resolve) => {
-        const selector = '${platform.resultSelector}';
-        let video = document.querySelector(selector);
-        if (!video) {
-          const container = document.querySelector(selector);
-          if (container) {
-            video = container.querySelector('video');
-          }
-        }
-        if (!video) {
-          resolve({ success: false, error: '找不到视频' });
-          return;
-        }
-        resolve({ success: true, videoUrl: video.src });
-      });
-    `);
+    const js = 'new Promise((resolve) => {' +
+      'const selector = \'' + platform.resultSelector + '\';' +
+      'let video = document.querySelector(selector);' +
+      'if (!video) {' +
+        'const container = document.querySelector(selector);' +
+        'if (container) {' +
+          'video = container.querySelector(\"video\");' +
+        '}' +
+      '}' +
+      'if (!video) {' +
+        'resolve({ success: false, error: \"找不到视频\" });' +
+        'return;' +
+      '}' +
+      'resolve({ success: true, videoUrl: video.src });' +
+    '});';
 
+    const result = await webContents.executeJavaScript(js);
     return result;
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-// 关闭内置浏览器
 ipcMain.handle('close-browser', async () => {
   try {
     if (aiBrowserWindow && !aiBrowserWindow.isDestroyed()) {
@@ -513,7 +460,6 @@ ipcMain.handle('close-browser', async () => {
   }
 });
 
-// 获取平台列表
 ipcMain.handle('get-platforms', async () => {
   return { 
     success: true, 
