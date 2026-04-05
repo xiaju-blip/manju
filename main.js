@@ -68,8 +68,8 @@ const textPlatforms = {
   deepseek: {
     name: 'DeepSeek',
     url: 'https://chat.deepseek.com/',
-    inputSelector: 'textarea[placeholder*="深"], textarea',
-    submitSelector: 'button[type="submit"], .send-button',
+    inputSelector: 'textarea[placeholder*="深"], textarea, div[contenteditable="true"]',
+    submitSelector: 'button[type="submit"], .send-button, button[aria-label="发送"]',
     outputSelector: '.ds-markdown, .markdown-section',
     waitSelector: '.result-streaming, .streaming',
     category: 'text'
@@ -77,7 +77,7 @@ const textPlatforms = {
   qwen: {
     name: '通义千问',
     url: 'https://tongyi.aliyun.com/qianwen/',
-    inputSelector: 'textarea',
+    inputSelector: 'textarea, div[contenteditable="true"]',
     submitSelector: 'button[class*="send"], button[class*="submit"], .send-btn',
     outputSelector: '.answer-content, .markdown-body',
     waitSelector: '.generating, .loading',
@@ -86,7 +86,7 @@ const textPlatforms = {
   doubao: {
     name: '豆包',
     url: 'https://www.doubao.com/',
-    inputSelector: 'textarea',
+    inputSelector: 'textarea, div[contenteditable="true"]',
     submitSelector: 'button.send-button, .btn-submit',
     outputSelector: '.answer-content, .markdown-content',
     waitSelector: '.loading, .generating',
@@ -95,7 +95,7 @@ const textPlatforms = {
   zhipu: {
     name: '智谱清言',
     url: 'https://chatglm.cn/',
-    inputSelector: 'textarea',
+    inputSelector: 'textarea, div[contenteditable="true"]',
     submitSelector: 'button[aria-label="发送"], button.send-btn',
     outputSelector: '.markdown-body, .content',
     waitSelector: '.generating, .streaming',
@@ -104,7 +104,7 @@ const textPlatforms = {
   moonshot: {
     name: 'Kimi',
     url: 'https://kimi.moonshot.cn/',
-    inputSelector: 'textarea',
+    inputSelector: 'textarea, div[contenteditable="true"]',
     submitSelector: 'button[data-testid="send-button"], button.send-button',
     outputSelector: '.markdown-content, .markdown-body',
     waitSelector: '.streaming, .generating',
@@ -314,20 +314,22 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           
           // 聚焦并清空输入框
           input.focus();
-          input.value = '';
+          if (input.value !== undefined) {
+            input.value = '';
+          } else if (input.textContent !== undefined) {
+            input.textContent = '';
+          }
           await new Promise(resolve => setTimeout(resolve, 500));
           
           // 填充提示词
-          if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT' || input.isContentEditable) {
-            if (input.isContentEditable) {
-              input.textContent = prompt;
-            } else {
-              input.value = prompt;
-            }
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-            console.log('提示词填充完成');
+          if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
+            input.value = prompt;
+          } else if (input.isContentEditable) {
+            input.textContent = prompt;
           }
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          console.log('提示词填充完成');
           
           await new Promise(resolve => setTimeout(resolve, 1000));
           
@@ -362,25 +364,6 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
     return result;
   } catch (error) {
     console.error('auto-submit 异常:', error);
-    return { success: false, error: error.message };
-  }
-});
-          
-          if (!button) {
-            resolve({ success: false, error: '找不到提交按钮' });
-            return;
-          }
-          
-          button.click();
-          resolve({ success: true });
-        } catch (e) {
-          resolve({ success: false, error: e.message });
-        }
-      });
-    `);
-
-    return result;
-  } catch (error) {
     return { success: false, error: error.message };
   }
 });
