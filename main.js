@@ -43,6 +43,12 @@ app.whenReady().then(() => {
       }
     });
   });
+  
+  // 禁用SSL证书验证，解决SSL握手错误
+  app.commandLine.appendSwitch('ignore-certificate-errors');
+  app.commandLine.appendSwitch('ignore-ssl-errors');
+  app.commandLine.appendSwitch('allow-insecure-localhost');
+  
   createWindow();
 });
 
