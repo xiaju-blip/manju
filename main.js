@@ -365,13 +365,6 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
     return { success: false, error: error.message };
   }
 });
-          if (!button) {
-            const selectors = submitSelector.split(', ');
-            for (const sel of selectors) {
-              button = document.querySelector(sel);
-              if (button) break;
-            }
-          }
           
           if (!button) {
             resolve({ success: false, error: '找不到提交按钮' });
