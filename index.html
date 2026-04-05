@@ -412,11 +412,14 @@
               🌐 打开平台
             </button>
             <button id="generateBtn" class="btn btn-success" onclick="generateManga()" disabled>
-              🚀 自动生成
+              🚀 生成提示词
             </button>
           </div>
 
           <div class="action-buttons">
+            <button id="copyFullPromptBtn" class="btn btn-warning" onclick="copyFullPrompt()" disabled>
+              📋 复制提示词
+            </button>
             <button id="getResultBtn" class="btn btn-primary" onclick="getResult()" disabled>
               📥 获取结果
             </button>
@@ -426,11 +429,12 @@
           </div>
 
           <div class="tips">
-            💡 <strong>使用流程：</strong><br>
+            💡 <strong>使用流程（手动复制最可靠）：</strong><br>
             1. 选择AI平台 → 点击「打开平台」<br>
             2. 在弹出窗口中登录账号<br>
-            3. 输入故事 → 点击「自动生成」<br>
-            4. 生成完成后点击「获取结果」
+            3. 输入故事 → 点击「🚀 生成提示词」<br>
+            4. 点击「📋 复制提示词」→ 粘贴到AI平台 → 发送<br>
+            5. AI生成完成 → 点击「📥 获取结果」
           </div>
         </div>
 
@@ -470,13 +474,18 @@
               🌐 打开平台
             </button>
             <button id="generateImageBtn" class="btn btn-success" onclick="generateImage()" disabled>
-              🎨 生成图片
+              🎨 生成提示词
             </button>
           </div>
 
-          <button id="getImagesBtn" class="btn btn-primary" onclick="getImages()" disabled style="margin-top: 15px;">
-            📥 获取生成的图片
-          </button>
+          <div class="action-buttons" style="margin-top: 10px;">
+            <button id="copyImagePromptBtn" class="btn btn-warning" onclick="copyImagePrompt()" disabled>
+              📋 复制提示词
+            </button>
+            <button id="getImagesBtn" class="btn btn-primary" onclick="getImages()" disabled>
+              📥 获取生成的图片
+            </button>
+          </div>
 
           <div class="tips">
             💡 <strong>提示：</strong>先生成漫剧获取绘图提示词，复制到这里直接生成图片
@@ -756,13 +765,13 @@
       openCurrentPlatform();
     }
 
-    async function generateManga() {
+    let fullGeneratedPrompt = ''; // 保存生成的完整提示词
+
+    function generateManga() {
       if (!selectedTextPlatform) {
         alert('请先在上方选择一个文本AI平台');
         return;
       }
-
-      // 移除前端判断，让后端真实检查
 
       const prompt = document.getElementById('prompt').value;
       if (!prompt.trim()) {
@@ -773,8 +782,8 @@
       const customStyle = document.getElementById('customStyle').value.trim();
       const style = customStyle || selectedStyle;
 
-      // 构造完整提示词
-      const fullPrompt = `你现在是专业的漫剧编剧，请根据用户需求创作一个漫剧剧本。
+      // 构造完整提示词 - 在主界面生成
+      fullGeneratedPrompt = `你现在是专业的漫剧编剧，请根据用户需求创作一个漫剧剧本。
 
 用户需求故事：
 ${prompt}
@@ -803,29 +812,29 @@ ${prompt}
 
 要求：内容生动有趣，画面感强，分镜清晰，适合改编成漫画。`;
 
-      document.getElementById('result').innerHTML = '<div class="status waiting">🚀 已经自动提交提示词，请在内置浏览器中等待AI生成完成，完成后点击「获取结果」<br>生成过程通常需要1-3分钟...</div>';
-      document.getElementById('generateBtn').disabled = true;
-      document.getElementById('status').className = 'status waiting';
-      document.getElementById('status').textContent = '🚀 正在自动提交中...';
-
-      const result = await ipcInvoke('auto-submit', { 
-        platformId: selectedTextPlatform, 
-        prompt: fullPrompt 
-      });
-
-      console.log('auto-submit result:', result);
-
-      if (!result.success) {
-        document.getElementById('result').innerHTML = `<div class="status disconnected">自动提交失败：${result.error}<br><br>💡 提示：已经填充好提示词了，请你<strong>手动点击发送按钮</strong>，生成完点击「📥 获取结果」即可</div>`;
-        document.getElementById('status').className = 'status ready';
-        document.getElementById('status').textContent = `⚠️ 自动提交失败，请手动点击发送`;
-      } else {
-        document.getElementById('result').innerHTML = '<div class="status waiting">✅ 提示词已填充完成！请在<b>内置浏览器窗口</b>中检查提示词，然后点击发送按钮开始生成<br>生成完成后，回到这里点击「📥 获取结果」</div>';
-        document.getElementById('status').className = 'status ready';
-        document.getElementById('status').textContent = '✅ 提示词已填充，请手动点击发送';
-      }
+      currentResult = fullGeneratedPrompt;
       
-      document.getElementById('generateBtn').disabled = false;
+      // 在主界面直接显示，方便复制
+      let html = `
+<div class="result-info">
+  <strong>✅ 提示词已生成！</strong><br>
+  💡 <span style="color: #dc3545; font-weight: bold;">请点击「📋 复制提示词」按钮，然后粘贴到AI平台输入框中发送</span><br>
+  <br>
+  使用流程：<br>
+  1. 点击「📋 复制提示词」<br>
+  2. 切换到打开的AI平台窗口<br>  
+  3. 粘贴到输入框 → 点击发送 → 等待生成<br>
+  4. AI生成完成 → 回到主界面 → 点击「📥 获取结果」<br>
+</div>
+<hr style="margin: 15px 0;">
+<pre style="background: #f8f9fa; padding: 15px; border-radius: 6px; white-space: pre-wrap; line-height: 1.6;">${fullGeneratedPrompt}</pre>
+`;
+      
+      document.getElementById('result').innerHTML = html;
+      document.getElementById('copyFullPromptBtn').disabled = false;
+      document.getElementById('getResultBtn').disabled = false;
+      document.getElementById('status').className = 'status ready';
+      document.getElementById('status').textContent = '✅ 提示词已生成，请复制后粘贴到AI平台';
     }
 
     async function getResult() {
@@ -878,13 +887,13 @@ ${prompt}
       document.getElementById('generatePromptsBtn').disabled = false;
     }
 
-    async function generateImage() {
+    let fullImagePrompt = ''; // 保存完整的绘图提示词
+
+    function generateImage() {
       if (!selectedImagePlatform) {
         alert('请先选择一个文生图平台');
         return;
       }
-
-      // 移除前端判断，让后端真实检查
 
       const prompt = document.getElementById('imagePrompt').value;
       if (!prompt.trim()) {
@@ -893,30 +902,39 @@ ${prompt}
       }
 
       const fullPrompt = `${prompt}，风格：${selectedImageStyle}，漫画风格，高质量，清晰`;
-
-      document.getElementById('result').innerHTML = '<div class="status waiting">🎨 已经自动提交提示词，请在内置浏览器中等待生成完成，完成后点击「获取生成的图片」<br>生成过程通常需要1-5分钟...</div>';
-      document.getElementById('generateImageBtn').disabled = true;
-      document.getElementById('status').className = 'status waiting';
-      document.getElementById('status').textContent = '🎨 正在自动提交绘图...';
-
-      const result = await ipcInvoke('auto-submit', { 
-        platformId: selectedImagePlatform, 
-        prompt: fullPrompt 
-      });
-
-      console.log('auto-submit result:', result);
-
-      if (!result.success) {
-        document.getElementById('result').innerHTML = `<div class="status disconnected">自动提交失败：${result.error}<br><br>💡 提示：已经填充好提示词了，请你<strong>手动点击生成按钮</strong>，生成完点击「📥 获取生成的图片」即可</div>`;
-        document.getElementById('status').className = 'status ready';
-        document.getElementById('status').textContent = `⚠️ 自动提交失败，请手动点击生成`;
-      } else {
-        document.getElementById('result').innerHTML = '<div class="status waiting">✅ 提示词已填充完成！请在<b>内置浏览器窗口</b>中检查提示词，然后点击生成按钮开始生成<br>生成完成后，回到这里点击「📥 获取生成的图片」</div>';
-        document.getElementById('status').className = 'status ready';
-        document.getElementById('status').textContent = '✅ 提示词已填充，请手动点击生成';
-      }
+      fullImagePrompt = fullPrompt;
+      currentResult = fullPrompt;
       
-      document.getElementById('generateImageBtn').disabled = false;
+      // 在主界面直接显示，方便复制
+      let html = `
+<div class="result-info">
+  <strong>✅ 绘图提示词已生成！</strong><br>
+  💡 <span style="color: #dc3545; font-weight: bold;">请点击「📋 复制提示词」按钮，然后粘贴到AI平台输入框中点击生成</span><br>
+  <br>
+  使用流程：<br>
+  1. 点击「📋 复制提示词」<br>
+  2. 切换到打开的文生图平台窗口<br>  
+  3. 粘贴到输入框 → 点击生成 → 等待图片生成<br>
+  4. 生成完成 → 回到主界面 → 点击「📥 获取图片」<br>
+</div>
+<hr style="margin: 15px 0;">
+<pre style="background: #f8f9fa; padding: 15px; border-radius: 6px; white-space: pre-wrap; line-height: 1.6;">${fullImagePrompt}</pre>
+`;
+      
+      document.getElementById('result').innerHTML = html;
+      document.getElementById('copyImagePromptBtn').disabled = false;
+      document.getElementById('getImagesBtn').disabled = false;
+      document.getElementById('status').className = 'status ready';
+      document.getElementById('status').textContent = '✅ 提示词已生成，请复制后粘贴到AI平台';
+    }
+
+    async function copyImagePrompt() {
+      if (!fullImagePrompt) {
+        alert('请先生成提示词');
+        return;
+      }
+      await navigator.clipboard.writeText(fullImagePrompt);
+      alert('✅ 绘图提示词已复制到剪贴板！\n\n现在：\n1. 切换到AI平台窗口\n2. 粘贴到输入框\n3. 点击生成开始绘图');
     }
 
     async function getImages() {
@@ -1040,6 +1058,15 @@ ${prompt}
       document.getElementById('getImagesBtn').disabled = true;
       document.getElementById('generateVideoBtn').disabled = true;
       document.getElementById('getVideoBtn').disabled = true;
+    }
+
+    async function copyFullPrompt() {
+      if (!fullGeneratedPrompt) {
+        alert('请先生成提示词');
+        return;
+      }
+      await navigator.clipboard.writeText(fullGeneratedPrompt);
+      alert('✅ 提示词已复制到剪贴板！\n\n现在：\n1. 切换到AI平台窗口\n2. 粘贴到输入框\n3. 点击发送开始生成');
     }
 
     async function copyResult() {
