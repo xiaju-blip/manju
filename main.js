@@ -188,24 +188,32 @@ ipcMain.handle('open-platform', async (event, { platformId }) => {
       aiBrowserWindow.close();
     }
 
-    // 创建新窗口加载AI平台
+    // 创建新窗口加载AI平台 - 使用独立窗口，不绑定parent，避免卡住
     aiBrowserWindow = new BrowserWindow({
-      width: 1000,
+      width: 1200,
       height: 800,
-      title: `${platform.name} - 内置浏览器`,
-      parent: mainWindow,
-      modal: false,
+      title: `${platform.name} - manju 内置浏览器`,
+      show: true,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
         webSecurity: false,
-        allowRunningInsecureContent: true
+        allowRunningInsecureContent: true,
+        sandbox: false
       }
     });
 
     // 打开开发者工具方便调试
     aiBrowserWindow.webContents.openDevTools();
-    aiBrowserWindow.loadURL(platform.url);
+    
+    // 等待页面加载完成后显示
+    aiBrowserWindow.on('ready-to-show', () => {
+      aiBrowserWindow.show();
+    });
+    
+    aiBrowserWindow.loadURL(platform.url, {
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    });
 
     aiBrowserWindow.on('closed', () => {
       aiBrowserWindow = null;
