@@ -762,12 +762,7 @@
         return;
       }
 
-      // 后端会再检查，这里先提示用户操作顺序
-      const statusEl = document.getElementById('status');
-      if (!statusEl.textContent.includes('已在内置浏览器打开')) {
-        alert('请先点击「🌐 打开平台」按钮，在内置弹出窗口中打开AI平台并登录账号，然后再点击自动生成！');
-        return;
-      }
+      // 移除前端判断，让后端真实检查
 
       const prompt = document.getElementById('prompt').value;
       if (!prompt.trim()) {
@@ -867,12 +862,7 @@
         return;
       }
 
-      // 检查是否已经打开平台
-      const statusEl = document.getElementById('status');
-      if (!statusEl.textContent.includes('已在内置浏览器打开')) {
-        alert('请先点击「🌐 打开平台」按钮，在内置弹出窗口中打开AI平台并登录账号，然后再点击生成！');
-        return;
-      }
+      // 移除前端判断，让后端真实检查
 
       const prompt = document.getElementById('imagePrompt').value;
       if (!prompt.trim()) {
@@ -954,12 +944,7 @@
         return;
       }
 
-      // 检查是否已经打开平台
-      const statusEl = document.getElementById('status');
-      if (!statusEl.textContent.includes('已在内置浏览器打开')) {
-        alert('请先点击「🌐 打开平台」按钮，在内置弹出窗口中打开AI平台并登录账号，然后再点击生成！');
-        return;
-      }
+      // 移除前端判断，让后端真实检查
 
       const prompt = document.getElementById('videoPrompt').value;
       const imagePath = document.getElementById('inputImagePath').value;
