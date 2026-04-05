@@ -754,7 +754,16 @@
 
     async function generateManga() {
       if (!selectedTextPlatform) {
-        alert('请先选择一个文本AI平台');
+        alert('请先在上方选择一个文本AI平台');
+        return;
+      }
+
+      // 检查是否已经打开平台
+      const statusEl = document.getElementById('status');
+      if (statusEl.textContent.includes('已在内置浏览器打开')) {
+        // 正常继续
+      } else {
+        alert('请先点击「🌐 打开平台」按钮，在内置弹出窗口中打开AI平台并登录账号，然后再点击自动生成！');
         return;
       }
 
@@ -848,6 +857,13 @@
         return;
       }
 
+      // 检查是否已经打开平台
+      const statusEl = document.getElementById('status');
+      if (!statusEl.textContent.includes('已在内置浏览器打开')) {
+        alert('请先点击「🌐 打开平台」按钮，在内置弹出窗口中打开AI平台并登录账号，然后再点击生成！');
+        return;
+      }
+
       const prompt = document.getElementById('imagePrompt').value;
       if (!prompt.trim()) {
         alert('请输入绘图提示词');
@@ -915,6 +931,13 @@
     async function generateVideo() {
       if (!selectedVideoPlatform) {
         alert('请先选择一个视频生成平台');
+        return;
+      }
+
+      // 检查是否已经打开平台
+      const statusEl = document.getElementById('status');
+      if (!statusEl.textContent.includes('已在内置浏览器打开')) {
+        alert('请先点击「🌐 打开平台」按钮，在内置弹出窗口中打开AI平台并登录账号，然后再点击生成！');
         return;
       }
 
