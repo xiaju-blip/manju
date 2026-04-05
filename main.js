@@ -76,9 +76,9 @@ const textPlatforms = {
   qwen: {
     name: '通义千问',
     url: 'https://tongyi.aliyun.com/qianwen/',
-    inputSelector: 'div[contenteditable="true"], .prompt-editor textarea, textarea',
-    submitSelector: 'button[data-testid="send"], button[data-testid="reply-btn"], button[class*="send"], .send-btn, .action-bar button:last-child',
-    outputSelector: '.answer-content, .markdown-body, .response-content',
+    inputSelector: 'div[contenteditable="true"], .prompt-editor textarea, textarea, .quill-editor div, #editor-container div',
+    submitSelector: 'button[data-testid="send"], button[data-testid="reply-btn"], button[class*="send"], .send-btn, .action-bar button:last-child, footer button:last-child, .send-button',
+    outputSelector: '.answer-content, .markdown-body, .response-content, .content-wrapper',
     waitSelector: '.generating, .loading, .streaming',
     category: 'text'
   },
@@ -299,8 +299,8 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           const submitSelector = '${platform.submitSelector}';
           console.log('选择器:', { inputSelector, submitSelector });
           
-          // 等待页面完全加载
-          await new Promise(resolve => setTimeout(resolve, 4000));
+          // 等待页面完全加载 - 通义千问加载较慢
+          await new Promise(resolve => setTimeout(resolve, 6000));
           
           let input = null;
           // 尝试多个选择器
@@ -313,7 +313,7 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           
           // 如果还是找不到，等待更长时间再试一次
           if (!input) {
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            await new Promise(resolve => setTimeout(resolve, 4000));
             for (const sel of inputSelectors) {
               input = document.querySelector(sel);
               console.log('重试选择器', sel, '找到:', !!input);
