@@ -341,16 +341,28 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           
           // 逐字输入模拟真实输入，触发网站字数统计，这样发送按钮才会激活
           console.log('开始逐字输入，长度: ' + prompt.length);
-          if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
-            for (let i = 0; i < prompt.length; i++) {
-              input.value += prompt[i];
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-              await new Promise(resolve => setTimeout(resolve, 3));
-            }
-          } else if (input.isContentEditable) {
+          
+          // 对于 contenteditable div 尝试多种方式
+          if (input.isContentEditable) {
+            // 先清空
+            input.textContent = '';
+            await new Promise(resolve => setTimeout(resolve, 500));
+            // 逐字输入
             for (let i = 0; i < prompt.length; i++) {
               input.textContent += prompt[i];
               input.dispatchEvent(new Event('input', { bubbles: true }));
+              input.dispatchEvent(new Event('change', { bubbles: true }));
+              await new Promise(resolve => setTimeout(resolve, 3));
+            }
+          } else if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
+            // 清空
+            input.value = '';
+            await new Promise(resolve => setTimeout(resolve, 500));
+            // 逐字输入
+            for (let i = 0; i < prompt.length; i++) {
+              input.value += prompt[i];
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              input.dispatchEvent(new Event('change', { bubbles: true }));
               await new Promise(resolve => setTimeout(resolve, 3));
             }
           } else if (typeof input.innerHTML !== 'undefined') {
@@ -363,6 +375,7 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           input.dispatchEvent(new Event('compositionend', { bubbles: true }));
           input.dispatchEvent(new Event('keyup', { bubbles: true }));
           input.dispatchEvent(new Event('keydown', { bubbles: true }));
+          input.dispatchEvent(new Event('click', { bubbles: true }));
           console.log('提示词填充完成，长度: ' + prompt.length);
           
           await new Promise(resolve => setTimeout(resolve, 2000));
