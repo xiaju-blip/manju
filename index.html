@@ -786,6 +786,8 @@
 
       document.getElementById('result').innerHTML = '<div class="status waiting">🚀 已经自动提交提示词，请在内置浏览器中等待AI生成完成，完成后点击「获取结果」<br>生成过程通常需要1-3分钟...</div>';
       document.getElementById('generateBtn').disabled = true;
+      document.getElementById('status').className = 'status waiting';
+      document.getElementById('status').textContent = '🚀 正在自动提交中...';
 
       const result = await ipcInvoke('auto-submit', { 
         platformId: selectedTextPlatform, 
@@ -796,6 +798,12 @@
 
       if (!result.success) {
         document.getElementById('result').innerHTML = `<div class="status disconnected">提交失败：${result.error}</div>`;
+        document.getElementById('status').className = 'status ready';
+        document.getElementById('status').textContent = `❌ 提交失败：${result.error}`;
+      } else {
+        document.getElementById('result').innerHTML = '<div class="status waiting">✅ 已自动提交！请在内置浏览器中等待AI生成完成，完成后点击「📥 获取结果</div>';
+        document.getElementById('status').className = 'status ready';
+        document.getElementById('status').textContent = '✅ 已提交，请等待AI生成完成';
       }
       
       document.getElementById('generateBtn').disabled = false;
@@ -874,14 +882,24 @@
 
       document.getElementById('result').innerHTML = '<div class="status waiting">🎨 已经自动提交提示词，请在内置浏览器中等待生成完成，完成后点击「获取生成的图片」<br>生成过程通常需要1-5分钟...</div>';
       document.getElementById('generateImageBtn').disabled = true;
+      document.getElementById('status').className = 'status waiting';
+      document.getElementById('status').textContent = '🎨 正在自动提交绘图...';
 
       const result = await ipcInvoke('auto-submit', { 
         platformId: selectedImagePlatform, 
         prompt: fullPrompt 
       });
 
+      console.log('auto-submit result:', result);
+
       if (!result.success) {
         document.getElementById('result').innerHTML = `<div class="status disconnected">提交失败：${result.error}</div>`;
+        document.getElementById('status').className = 'status ready';
+        document.getElementById('status').textContent = `❌ 提交失败：${result.error}`;
+      } else {
+        document.getElementById('result').innerHTML = '<div class="status waiting">✅ 已自动提交！请在内置浏览器中等待AI生成完成，完成后点击「📥 获取生成的图片</div>';
+        document.getElementById('status').className = 'status ready';
+        document.getElementById('status').textContent = '✅ 已提交，请等待AI生成完成';
       }
       
       document.getElementById('generateImageBtn').disabled = false;

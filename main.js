@@ -68,8 +68,8 @@ const textPlatforms = {
   deepseek: {
     name: 'DeepSeek',
     url: 'https://chat.deepseek.com/',
-    inputSelector: 'textarea[placeholder*="深"], textarea, div[contenteditable="true"]',
-    submitSelector: 'button[type="submit"], .send-button, button[aria-label="发送"]',
+    inputSelector: 'div[contenteditable="true"], textarea[placeholder*="深"], textarea',
+    submitSelector: 'button[data-testid="send-button"], .send-button, button[type="submit"], button[aria-label="发送"]',
     outputSelector: '.ds-markdown, .markdown-section',
     waitSelector: '.result-streaming, .streaming',
     category: 'text'
@@ -77,8 +77,8 @@ const textPlatforms = {
   qwen: {
     name: '通义千问',
     url: 'https://tongyi.aliyun.com/qianwen/',
-    inputSelector: 'textarea, div[contenteditable="true"]',
-    submitSelector: 'button[class*="send"], button[class*="submit"], .send-btn',
+    inputSelector: 'div[contenteditable="true"], textarea',
+    submitSelector: 'button[data-testid="reply-btn"], button[class*="send"], button[class*="submit"], .send-btn',
     outputSelector: '.answer-content, .markdown-body',
     waitSelector: '.generating, .loading',
     category: 'text'
@@ -86,8 +86,8 @@ const textPlatforms = {
   doubao: {
     name: '豆包',
     url: 'https://www.doubao.com/',
-    inputSelector: 'textarea, div[contenteditable="true"]',
-    submitSelector: 'button.send-button, .btn-submit',
+    inputSelector: 'div[contenteditable="true"], textarea',
+    submitSelector: 'button[data-testid="send-button"], button.send-button, .btn-submit',
     outputSelector: '.answer-content, .markdown-content',
     waitSelector: '.loading, .generating',
     category: 'text'
