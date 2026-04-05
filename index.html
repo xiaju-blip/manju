@@ -212,7 +212,7 @@
     }
 
     .platform-card {
-      padding: 10px;
+      padding: 12px;
       margin: 8px 0;
       border: 2px solid #e0e0e0;
       border-radius: 6px;
@@ -247,10 +247,6 @@
       grid-template-columns: 1fr 1fr;
       gap: 10px;
       margin-top: 15px;
-    }
-
-    .action-buttons .btn {
-      width: 100%;
     }
 
     .empty-state {
@@ -338,6 +334,7 @@
       padding: 10px;
       margin-bottom: 15px;
       font-size: 14px;
+      display: block;
     }
 
     .current-platform span {
@@ -394,7 +391,7 @@
 
           <div class="form-group">
             <label>故事主题/摘要：</label>
-            <textarea id="prompt" placeholder="例如：一个少女在魔法学校发现了隐藏的秘密..."></textarea>
+            <textarea id="prompt" placeholder="例如：一介凡骨许太平，誓要向这修行界证明，凡骨亦能斩妖，凡骨亦能除魔，凡骨亦能登仙！"></textarea>
           </div>
 
           <div class="form-group">
@@ -469,7 +466,7 @@
           </div>
 
           <div class="action-buttons">
-            <button id="openImagePlatformBtn" class="btn btn-info" onclick="openCurrentImagePlatform()">
+            <button id="openImagePlatformBtn" class="btn btn-info" onclick="openCurrentPlatform()" disabled>
               🌐 打开平台
             </button>
             <button id="generateImageBtn" class="btn btn-success" onclick="generateImage()" disabled>
@@ -513,7 +510,7 @@
           </div>
 
           <div class="action-buttons">
-            <button id="openVideoPlatformBtn" class="btn btn-info" onclick="openCurrentVideoPlatform()">
+            <button id="openVideoPlatformBtn" class="btn btn-info" onclick="openCurrentVideoPlatform()" disabled>
               🌐 打开平台
             </button>
             <button id="generateVideoBtn" class="btn btn-success" onclick="generateVideo()" disabled>
@@ -570,17 +567,22 @@
     let activeTab = 'manga';
     let currentPlatformId = null;
 
+    console.log('文档加载完成，正在请求平台列表...');
+
     // 初始化加载平台列表
     document.addEventListener('DOMContentLoaded', async () => {
       try {
+        console.log('DOMContentLoaded 触发，调用 get-platforms...');
         const result = await ipcRenderer.invoke('get-platforms');
+        console.log('get-platforms 返回:', result);
         if (result.success) {
           renderPlatformLists(result);
+          console.log('平台列表渲染完成');
         } else {
-          console.error('Failed to load platforms:', result.error);
+          console.error('加载平台列表失败:', result.error);
         }
       } catch (e) {
-        console.error('Error loading platforms:', e);
+        console.error('加载平台列表异常:', e);
       }
     });
 
@@ -605,7 +607,7 @@
     }
 
     function renderPlatformLists(result) {
-      console.log('Rendering platforms:', result);
+      console.log('开始渲染平台列表');
       
       const textContainer = document.getElementById('textPlatformList');
       if (!textContainer) {
@@ -615,43 +617,50 @@
       
       let html = '';
       result.textPlatforms.forEach(p => {
+        const selected = selectedTextPlatform === p.id ? 'selected' : '';
         html += `
-          <div class="platform-card ${selectedTextPlatform === p.id ? 'selected' : ''}" onclick="selectTextPlatform('${p.id}', '${p.name}')">
+          <div class="platform-card ${selected}" onclick="selectTextPlatform('${p.id}', '${p.name}')">
             <div class="platform-name">${p.name}</div>
             <div class="platform-category">文本生成 / 免费网页版</div>
           </div>
         `;
       });
       textContainer.innerHTML = html;
+      console.log('文本平台渲染完成，数量:', result.textPlatforms.length);
 
       const imageContainer = document.getElementById('imagePlatformList');
       html = '';
       result.imagePlatforms.forEach(p => {
+        const selected = selectedImagePlatform === p.id ? 'selected' : '';
         html += `
-          <div class="platform-card ${selectedImagePlatform === p.id ? 'selected' : ''}" onclick="selectImagePlatform('${p.id}', '${p.name}')">
+          <div class="platform-card ${selected}" onclick="selectImagePlatform('${p.id}', '${p.name}')">
             <div class="platform-name">${p.name}</div>
             <div class="platform-category">文生图 / 免费网页版</div>
           </div>
         `;
       });
       imageContainer.innerHTML = html;
+      console.log('图片平台渲染完成，数量:', result.imagePlatforms.length);
 
       const videoContainer = document.getElementById('videoPlatformList');
       html = '';
       result.videoPlatforms.forEach(p => {
+        const selected = selectedVideoPlatform === p.id ? 'selected' : '';
         html += `
-          <div class="platform-card ${selectedVideoPlatform === p.id ? 'selected' : ''}" onclick="selectVideoPlatform('${p.id}', '${p.name}')">
+          <div class="platform-card ${selected}" onclick="selectVideoPlatform('${p.id}', '${p.name}')">
             <div class="platform-name">${p.name}</div>
             <div class="platform-category">图生视频 / 免费网页版</div>
           </div>
         `;
       });
       videoContainer.innerHTML = html;
+      console.log('视频平台渲染完成，数量:', result.videoPlatforms.length);
       
-      console.log('Platforms rendered:', result.textPlatforms.length + ' text, ' + result.imagePlatforms.length + ' image, ' + result.videoPlatforms.length + ' video');
+      console.log('所有平台渲染完毕');
     }
 
     function selectTextPlatform(id, name) {
+      console.log('选择文本平台:', id, name);
       selectedTextPlatform = id;
       currentPlatformId = id;
       document.querySelectorAll('#textPlatformList .platform-card').forEach(card => {
@@ -664,6 +673,7 @@
     }
 
     function selectImagePlatform(id, name) {
+      console.log('选择图片平台:', id, name);
       selectedImagePlatform = id;
       currentPlatformId = id;
       document.querySelectorAll('#imagePlatformList .platform-card').forEach(card => {
@@ -676,6 +686,7 @@
     }
 
     function selectVideoPlatform(id, name) {
+      console.log('选择视频平台:', id, name);
       selectedVideoPlatform = id;
       currentPlatformId = id;
       document.querySelectorAll('#videoPlatformList .platform-card').forEach(card => {
@@ -688,8 +699,11 @@
     }
 
     async function openCurrentPlatform() {
+      console.log('openCurrentPlatform, activeTab:', activeTab);
       let platformId = activeTab === 'manga' ? selectedTextPlatform : 
                      activeTab === 'image' ? selectedImagePlatform : selectedVideoPlatform;
+      
+      console.log('platformId:', platformId);
       
       if (!platformId) {
         alert('请先选择一个平台');
@@ -700,6 +714,7 @@
       document.getElementById('status').textContent = '🔄 正在打开平台...';
 
       const result = await ipcRenderer.invoke('open-platform', { platformId: platformId });
+      console.log('open-platform result:', result);
       
       if (result.success) {
         document.getElementById('status').className = 'status ready';
@@ -760,6 +775,8 @@
         prompt: fullPrompt 
       });
 
+      console.log('auto-submit result:', result);
+
       if (!result.success) {
         document.getElementById('result').innerHTML = `<div class="status disconnected">提交失败：${result.error}</div>`;
       }
@@ -777,6 +794,8 @@
       document.getElementById('status').textContent = '📥 正在获取结果...';
 
       const result = await ipcRenderer.invoke('extract-result', { platformId: selectedTextPlatform });
+
+      console.log('extract-result result:', result);
 
       if (result.success) {
         currentResult = result.content;
@@ -855,6 +874,8 @@
 
       const result = await ipcRenderer.invoke('extract-images', { platformId: selectedImagePlatform });
 
+      console.log('extract-images result:', result);
+
       if (result.success && result.imageUrls && result.imageUrls.length > 0) {
         let html = `<div class="result-info">
           <strong>✅ 图片获取完成！</strong><br>
@@ -873,78 +894,6 @@
 
         html += '</div>';
         document.getElementById('result').innerHTML = html;
-        currentResult = result.imageUrls.join('\\n');
+        currentResult = result.imageUrls.join('\n');
         document.getElementById('status').className = 'status ready';
         document.getElementById('status').textContent = '✅ 图片获取成功';
-      } else {
-        document.getElementById('result').innerHTML = `<div class="status disconnected">获取失败：${result ? result.error : '没有找到图片'}<br><br>请确认图片已经生成完成</div>`;
-        document.getElementById('status').className = 'status ready';
-        document.getElementById('status').textContent = '❌ 获取图片失败';
-      }
-    }
-
-    async function generateVideo() {
-      if (!selectedVideoPlatform) {
-        alert('请先选择一个图生视频平台');
-        return;
-      }
-
-      document.getElementById('result').innerHTML = '<div class="status waiting">🎬 平台已打开，请在内置浏览器中手动上传图片并提交生成<br>生成过程通常需要3-10分钟，完成后点击「获取生成的视频」</div>';
-    }
-
-    async function getVideo() {
-      if (!selectedVideoPlatform) {
-        alert('请先选择平台');
-        return;
-      }
-
-      document.getElementById('status').className = 'status waiting';
-      document.getElementById('status').textContent = '📥 正在获取视频...';
-
-      const result = await ipcRenderer.invoke('extract-video', { platformId: selectedVideoPlatform });
-
-      if (result.success && result.videoUrl) {
-        let html = `<div class="result-info">
-          <strong>✅ 视频生成完成！</strong><br>
-        </div>
-        <video controls src="${result.videoUrl}" style="width: 100%; border-radius: 8px;"></video>`;
-
-        document.getElementById('result').innerHTML = html;
-        currentResult = result.videoUrl;
-        document.getElementById('status').className = 'status ready';
-        document.getElementById('status').textContent = '✅ 视频获取成功';
-      } else {
-        document.getElementById('result').innerHTML = `<div class="status disconnected">获取失败：${result ? result.error : '没有找到视频'}<br><br>请确认视频已经生成完成</div>`;
-        document.getElementById('status').className = 'status ready';
-        document.getElementById('status').textContent = '❌ 获取视频失败';
-      }
-    }    }
-
-    function copyResult() {
-      if (!currentResult) {
-        alert('没有内容可复制');
-        return;
-      }
-      navigator.clipboard.writeText(currentResult).then(() => {
-        alert('已复制到剪贴板！');
-      }).catch(() => {
-        alert('复制失败，请手动复制');
-      });
-    }
-
-    async function closeBrowser() {
-      await ipcRenderer.invoke('close-browser');
-      selectedTextPlatform = null;
-      selectedImagePlatform = null;
-      selectedVideoPlatform = null;
-      currentResult = '';
-      document.getElementById('result').innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><p>浏览器已关闭</p></div>';
-      document.getElementById('status').className = 'status ready';
-      document.getElementById('status').textContent = '🗑️ 浏览器已关闭';
-      document.getElementById('currentPlatform').style.display = 'none';
-      document.getElementById('currentImagePlatform').style.display = 'none';
-      document.getElementById('currentVideoPlatform').style.display = 'none';
-    }
-  </script>
-</body>
-</html>
