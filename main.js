@@ -313,33 +313,42 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           'input.scrollIntoView({behavior: "smooth", block: "center"});' +
           'await new Promise(resolve => setTimeout(resolve, 1000));' +
           'console.log("开始逐字输入，长度: " + prompt.length);' +
+          '// 对现代框架使用正确的事件类型，触发字数统计' +
           'if (input.isContentEditable) {' +
             'input.textContent = "";' +
-            'await new Promise(resolve => setTimeout(resolve, 500));' +
+            'input.innerHTML = "";' +
+            'await new Promise(resolve => setTimeout(resolve, 800));' +
             'for (let i = 0; i < prompt.length; i++) {' +
               'input.textContent += prompt[i];' +
-              'input.dispatchEvent(new Event("input", { bubbles: true }));' +
+              '// 使用 InputEvent 而不是普通 Event，React/Vue 需要这个' +
+              'input.dispatchEvent(new InputEvent("input", { bubbles: true, data: prompt[i] }));' +
               'input.dispatchEvent(new Event("change", { bubbles: true }));' +
-              'await new Promise(resolve => setTimeout(resolve, 3));' +
+              'input.dispatchEvent(new Event("keyup", { bubbles: true }));' +
+              'await new Promise(resolve => setTimeout(resolve, 5));' +
             '}' +
           '} else if (input.tagName === "TEXTAREA" || input.tagName === "INPUT") {' +
             'input.value = "";' +
-            'await new Promise(resolve => setTimeout(resolve, 500));' +
+            'await new Promise(resolve => setTimeout(resolve, 800));' +
             'for (let i = 0; i < prompt.length; i++) {' +
               'input.value += prompt[i];' +
-              'input.dispatchEvent(new Event("input", { bubbles: true }));' +
+              'input.dispatchEvent(new InputEvent("input", { bubbles: true, data: prompt[i] }));' +
               'input.dispatchEvent(new Event("change", { bubbles: true }));' +
-              'await new Promise(resolve => setTimeout(resolve, 3));' +
+              'input.dispatchEvent(new Event("keyup", { bubbles: true }));' +
+              'await new Promise(resolve => setTimeout(resolve, 5));' +
             '}' +
           '} else if (typeof input.innerHTML !== "undefined") {' +
             'input.innerHTML = prompt;' +
           '}' +
+          '// 触发所有可能的事件，确保框架检测到内容变化' +
           'input.dispatchEvent(new Event("change", { bubbles: true }));' +
-          'input.dispatchEvent(new Event("compositionstart", { bubbles: true }));' +
-          'input.dispatchEvent(new Event("compositionend", { bubbles: true }));' +
+          'input.dispatchEvent(new Event("beforeinput", { bubbles: true }));' +
+          'input.dispatchEvent(new Event("input", { bubbles: true }));' +
+          'input.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));' +
+          'input.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));' +
           'input.dispatchEvent(new Event("keyup", { bubbles: true }));' +
           'input.dispatchEvent(new Event("keydown", { bubbles: true }));' +
           'input.dispatchEvent(new Event("click", { bubbles: true }));' +
+          'input.dispatchEvent(new Event("focus", { bubbles: true }));' +
           'console.log("提示词填充完成，长度: " + prompt.length);' +
           'await new Promise(resolve => setTimeout(resolve, 2000));' +
           'let button = null;' +
