@@ -271,51 +271,100 @@ ipcMain.handle('extract-result', async (event, { platformId }) => {
 // 在AI页面自动填充提示词并提交
 ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
   try {
+    console.log('auto-submit 开始:', { platformId, promptLength: prompt.length });
     const platform = allPlatforms[platformId];
     if (!platform || !aiBrowserWindow || aiBrowserWindow.isDestroyed()) {
-      return { success: false, error: '浏览器窗口未打开' };
+      console.log('auto-submit 失败:', '浏览器窗口未打开');
+      return { success: false, error: '浏览器窗口未打开，请先打开平台' };
     }
 
     const webContents = aiBrowserWindow.webContents;
 
-    // 对prompt进行转义
-    const escapedPrompt = prompt.replace(/\\/g, '\\\\').replace(/'/g, '\\\'').replace(/\n/g, '\\n');
+    // 对prompt进行转义 - 使用更安全的方式
+    const escapedPrompt = JSON.stringify(prompt);
     
     const result = await webContents.executeJavaScript(`
       new Promise(async (resolve) => {
+        console.log('auto-submit 开始执行JavaScript');
         try {
           const inputSelector = '${platform.inputSelector}';
           const submitSelector = '${platform.submitSelector}';
+          console.log('选择器:', { inputSelector, submitSelector });
           
           // 等待输入框加载
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          await new Promise(resolve => setTimeout(resolve, 2000));
           
-          let input = document.querySelector(inputSelector);
-          if (!input) {
-            // 尝试多个选择器
-            const selectors = inputSelector.split(', ');
-            for (const sel of selectors) {
-              input = document.querySelector(sel);
-              if (input) break;
-            }
+          let input = null;
+          // 尝试多个选择器
+          const selectors = inputSelector.split(', ');
+          for (const sel of selectors) {
+            input = document.querySelector(sel);
+            console.log('尝试选择器', sel, '找到:', !!input);
+            if (input) break;
           }
           
           if (!input) {
-            resolve({ success: false, error: '找不到输入框' });
+            console.log('找不到输入框');
+            resolve({ success: false, error: '找不到输入框，请确保页面已完全加载' });
             return;
           }
           
+          // 填充提示词 - 使用JSON.parse保证正确
+          const prompt = ${escapedPrompt};
+          
+          // 聚焦并清空输入框
+          input.focus();
+          input.value = '';
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
           // 填充提示词
-          if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
-            input.value = \`${escapedPrompt}\`;
+          if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT' || input.isContentEditable) {
+            if (input.isContentEditable) {
+              input.textContent = prompt;
+            } else {
+              input.value = prompt;
+            }
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
+            console.log('提示词填充完成');
           }
           
           await new Promise(resolve => setTimeout(resolve, 1000));
           
           // 点击提交按钮
           let button = document.querySelector(submitSelector);
+          if (!button) {
+            const buttonSelectors = submitSelector.split(', ');
+            for (const sel of buttonSelectors) {
+              button = document.querySelector(sel);
+              console.log('尝试按钮选择器', sel, '找到:', !!button);
+              if (button) break;
+            }
+          }
+          
+          if (!button) {
+            console.log('找不到提交按钮');
+            resolve({ success: false, error: '找不到提交按钮，请页面加载完成后再试' });
+            return;
+          }
+          
+          console.log('点击提交按钮');
+          button.click();
+          resolve({ success: true });
+        } catch (e) {
+          console.error('JavaScript执行错误:', e);
+          resolve({ success: false, error: e.message });
+        }
+      });
+    `);
+
+    console.log('auto-submit 执行结果:', result);
+    return result;
+  } catch (error) {
+    console.error('auto-submit 异常:', error);
+    return { success: false, error: error.message };
+  }
+});
           if (!button) {
             const selectors = submitSelector.split(', ');
             for (const sel of selectors) {
