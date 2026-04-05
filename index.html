@@ -902,6 +902,104 @@
 
         html += '</div>';
         document.getElementById('result').innerHTML = html;
-        currentResult = result.imageUrls.join('\\n');
+        currentResult = result.imageUrls.join('\n');
         document.getElementById('status').className = 'status ready';
-        document.getElementById('status').textContent = '
+        document.getElementById('status').textContent = '✅ 图片获取成功';
+      } else {
+        document.getElementById('result').innerHTML = `<div class="status disconnected">获取失败：${result.error}<br><br>请确认AI已经生成完成</div>`;
+        document.getElementById('status').className = 'status ready';
+        document.getElementById('status').textContent = '❌ 获取图片失败';
+      }
+    }
+
+    async function generateVideo() {
+      if (!selectedVideoPlatform) {
+        alert('请先选择一个视频生成平台');
+        return;
+      }
+
+      const prompt = document.getElementById('videoPrompt').value;
+      const imagePath = document.getElementById('inputImagePath').value;
+      if (!imagePath.trim()) {
+        alert('请输入图片本地路径');
+        return;
+      }
+
+      document.getElementById('result').innerHTML = '<div class="status waiting">🎬 已经自动提交，请在内置浏览器中等待生成完成，完成后点击「获取生成的视频」<br>生成过程通常需要3-10分钟...</div>';
+      document.getElementById('generateVideoBtn').disabled = true;
+
+      const result = await ipcInvoke('auto-submit-video', { 
+        platformId: selectedVideoPlatform, 
+        prompt: prompt,
+        imagePath: imagePath
+      });
+
+      if (!result.success) {
+        document.getElementById('result').innerHTML = `<div class="status disconnected">提交失败：${result.error}</div>`;
+      }
+      
+      document.getElementById('generateVideoBtn').disabled = false;
+    }
+
+    async function getVideo() {
+      if (!selectedVideoPlatform) {
+        alert('请先选择平台');
+        return;
+      }
+
+      document.getElementById('status').className = 'status waiting';
+      document.getElementById('status').textContent = '📥 正在获取视频...';
+
+      const result = await ipcInvoke('extract-video', { platformId: selectedVideoPlatform });
+
+      console.log('extract-video result:', result);
+
+      if (result.success) {
+        document.getElementById('result').innerHTML = `
+          <div class="result-info">
+            <strong>✅ 视频获取完成！</strong><br>
+            视频URL: <a href="${result.videoUrl}" target="_blank">${result.videoUrl}</a>
+          </div>
+          <video controls src="${result.videoUrl}" style="width: 100%; border-radius: 8px; margin-top: 15px;">
+            您的浏览器不支持视频播放
+          </video>
+        `;
+        currentResult = result.videoUrl;
+        document.getElementById('status').className = 'status ready';
+        document.getElementById('status').textContent = '✅ 视频获取成功';
+      } else {
+        document.getElementById('result').innerHTML = `<div class="status disconnected">获取失败：${result.error}<br><br>请确认AI已经生成完成</div>`;
+        document.getElementById('status').className = 'status ready';
+        document.getElementById('status').textContent = '❌ 获取视频失败';
+      }
+    }
+
+    async function closeBrowser() {
+      if (!confirm('确定要关闭内置浏览器吗？')) {
+        return;
+      }
+      await ipcInvoke('close-browser');
+      document.getElementById('status').className = 'status ready';
+      document.getElementById('status').textContent = '🗑️ 内置浏览器已关闭';
+      
+      // 禁用按钮
+      document.getElementById('generateBtn').disabled = true;
+      document.getElementById('getResultBtn').disabled = true;
+      document.getElementById('generatePromptsBtn').disabled = true;
+      document.getElementById('generateImageBtn').disabled = true;
+      document.getElementById('getImagesBtn').disabled = true;
+      document.getElementById('generateVideoBtn').disabled = true;
+      document.getElementById('getVideoBtn').disabled = true;
+    }
+
+    async function copyResult() {
+      if (!currentResult) {
+        alert('没有可复制的结果');
+        return;
+      }
+      await navigator.clipboard.writeText(currentResult);
+      alert('已复制到剪贴板！');
+    }
+  </script>
+</body>
+</html>
