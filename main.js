@@ -18,6 +18,8 @@ function createWindow() {
     icon: path.join(__dirname, 'assets', 'icon.png')
   });
 
+  // 打开开发者工具方便调试
+  mainWindow.webContents.openDevTools();
   mainWindow.loadFile('index.html');
 
   mainWindow.on('closed', function () {
