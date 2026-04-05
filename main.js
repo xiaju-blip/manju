@@ -67,7 +67,7 @@ const textPlatforms = {
   deepseek: {
     name: 'DeepSeek',
     url: 'https://chat.deepseek.com/',
-    inputSelector: 'div[contenteditable="true"], #chat-input textarea, textarea[placeholder*="深"], textarea',
+    inputSelector: 'div[contenteditable="true"], #chat-input div, #chat-input textarea, textarea[placeholder*="深"], textarea',
     submitSelector: 'button[data-testid="send-button"], .send-button, button[type="submit"], button[aria-label="发送"], .chat-footer button:last-child',
     outputSelector: '.ds-markdown, .markdown-section',
     waitSelector: '.result-streaming, .streaming',
@@ -103,8 +103,8 @@ const textPlatforms = {
   moonshot: {
     name: 'Kimi',
     url: 'https://kimi.moonshot.cn/',
-    inputSelector: 'textarea, div[contenteditable="true"]',
-    submitSelector: 'button[data-testid="send-button"], button.send-button',
+    inputSelector: 'div[contenteditable="true"], .editor-container textarea, textarea',
+    submitSelector: 'button[data-testid="send-button"], button.send-button, .chat-input-container button:last-child',
     outputSelector: '.markdown-content, .markdown-body',
     waitSelector: '.streaming, .generating',
     category: 'text'
@@ -197,7 +197,7 @@ ipcMain.handle('open-platform', async (event, { platformId }) => {
     aiBrowserWindow = new BrowserWindow({
       width: 1200,
       height: 800,
-      title: `${platform.name} - manju 内置浏览器`,
+      title: `${platform.name} - manju 内置浏览器',
       show: true,
       webPreferences: {
         nodeIntegration: true,
@@ -272,9 +272,9 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
   try {
     console.log('auto-submit 开始:', { platformId, promptLength: prompt.length });
     const platform = allPlatforms[platformId];
-    if (!aiBrowserWindow || aiBrowserWindow.isDestroyed()) {
+    if (!platform || !aiBrowserWindow || aiBrowserWindow.isDestroyed()) {
       console.log('auto-submit 失败: 浏览器窗口未打开/已销毁');
-      return { success: false, error: '浏览器窗口未打开，请先点击打开平台' };
+      return { success: false, error: '浏览器窗口未打开，请先打开平台' };
     }
     if (!platform) {
       console.log('auto-submit 失败: 不支持的平台', platformId);
@@ -339,16 +339,31 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           input.scrollIntoView({behavior: 'smooth', block: 'center'});
           await new Promise(resolve => setTimeout(resolve, 1000));
           
-          // 填充提示词
+          // 逐字输入模拟真实输入，触发网站字数统计，这样发送按钮才会激活
+          console.log('开始逐字输入，长度: ' + prompt.length);
           if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
-            input.value = prompt;
+            for (let i = 0; i < prompt.length; i++) {
+              input.value += prompt[i];
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              await new Promise(resolve => setTimeout(resolve, 3));
+            }
           } else if (input.isContentEditable) {
-            input.textContent = prompt;
+            for (let i = 0; i < prompt.length; i++) {
+              input.textContent += prompt[i];
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              await new Promise(resolve => setTimeout(resolve, 3));
+            }
+          } else if (typeof input.innerHTML !== 'undefined') {
+            input.innerHTML = prompt;
           }
-          input.dispatchEvent(new Event('input', { bubbles: true }));
+          
+          // 触发多个事件保证网站检测到输入完成
           input.dispatchEvent(new Event('change', { bubbles: true }));
+          input.dispatchEvent(new Event('compositionstart', { bubbles: true }));
           input.dispatchEvent(new Event('compositionend', { bubbles: true }));
-          console.log('提示词填充完成');
+          input.dispatchEvent(new Event('keyup', { bubbles: true }));
+          input.dispatchEvent(new Event('keydown', { bubbles: true }));
+          console.log('提示词填充完成，长度: ' + prompt.length);
           
           await new Promise(resolve => setTimeout(resolve, 2000));
           
