@@ -13,7 +13,9 @@ function createWindow() {
       nodeIntegration: true,
       contextIsolation: false,
       enableRemoteModule: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      webSecurity: false,
+      allowRunningInsecureContent: true
     },
     icon: path.join(__dirname, 'assets', 'icon.png')
   });
@@ -195,10 +197,14 @@ ipcMain.handle('open-platform', async (event, { platformId }) => {
       modal: false,
       webPreferences: {
         nodeIntegration: false,
-        contextIsolation: true
+        contextIsolation: true,
+        webSecurity: false,
+        allowRunningInsecureContent: true
       }
     });
 
+    // 打开开发者工具方便调试
+    aiBrowserWindow.webContents.openDevTools();
     aiBrowserWindow.loadURL(platform.url);
 
     aiBrowserWindow.on('closed', () => {
