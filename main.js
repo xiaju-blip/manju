@@ -283,7 +283,11 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
     // 对prompt进行转义 - 使用更安全的方式
     const escapedPrompt = JSON.stringify(prompt);
     
-    const result = await webContents.executeJavaScript(`
+    // 预先拆分选择器避免JS字符串内变量问题
+    const inputSelectorsList = platform.inputSelector.split(', ');
+    const submitSelectorsList = platform.submitSelector.split(', ');
+    
+    let jsCode = `
       new Promise(async (resolve) => {
         console.log('auto-submit 开始执行JavaScript');
         try {
@@ -296,8 +300,8 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           
           let input = null;
           // 尝试多个选择器
-          const selectors = inputSelector.split(', ');
-          for (const sel of selectors) {
+          const inputSelectors = [${inputSelectorsList.map(s => `'${s}'`).join(', ')}];
+          for (const sel of inputSelectors) {
             input = document.querySelector(sel);
             console.log('尝试选择器', sel, '找到:', !!input);
             if (input) break;
@@ -306,7 +310,7 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           // 如果还是找不到，等待更长时间再试一次
           if (!input) {
             await new Promise(resolve => setTimeout(resolve, 3000));
-            for (const sel of selectors) {
+            for (const sel of inputSelectors) {
               input = document.querySelector(sel);
               console.log('重试选择器', sel, '找到:', !!input);
               if (input) break;
@@ -348,8 +352,8 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           // 点击提交按钮
           let button = document.querySelector(submitSelector);
           if (!button) {
-            const buttonSelectors = submitSelector.split(', ');
-            for (const sel of buttonSelectors) {
+            const submitSelectors = [${submitSelectorsList.map(s => `'${s}'`).join(', ')}];
+            for (const sel of submitSelectors) {
               button = document.querySelector(sel);
               console.log('尝试按钮选择器', sel, '找到:', !!button);
               if (button) break;
@@ -359,7 +363,8 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           // 如果还是找不到，重试一次
           if (!button) {
             await new Promise(resolve => setTimeout(resolve, 2000));
-            for (const sel of buttonSelectors) {
+            const submitSelectors = [${submitSelectorsList.map(s => `'${s}'`).join(', ')}];
+            for (const sel of submitSelectors) {
               button = document.querySelector(sel);
               console.log('重试按钮选择器', sel, '找到:', !!button);
               if (button) break;
@@ -384,7 +389,9 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           resolve({ success: false, error: e.message });
         }
       });
-    `);
+    `;
+    
+    const result = await webContents.executeJavaScript(jsCode);
 
     console.log('auto-submit 执行结果:', result);
     return result;
