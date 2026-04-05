@@ -218,6 +218,7 @@
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.3s;
+      background: #fcfcfc;
     }
 
     .platform-card:hover {
@@ -571,9 +572,15 @@
 
     // 初始化加载平台列表
     document.addEventListener('DOMContentLoaded', async () => {
-      const result = await ipcRenderer.invoke('get-platforms');
-      if (result.success) {
-        renderPlatformLists(result);
+      try {
+        const result = await ipcRenderer.invoke('get-platforms');
+        if (result.success) {
+          renderPlatformLists(result);
+        } else {
+          console.error('Failed to load platforms:', result.error);
+        }
+      } catch (e) {
+        console.error('Error loading platforms:', e);
       }
     });
 
@@ -598,29 +605,50 @@
     }
 
     function renderPlatformLists(result) {
+      console.log('Rendering platforms:', result);
+      
       const textContainer = document.getElementById('textPlatformList');
-      textContainer.innerHTML = result.textPlatforms.map(p => `
-        <div class="platform-card ${selectedTextPlatform === p.id ? 'selected' : ''}" onclick="selectTextPlatform('${p.id}', '${p.name}')">
-          <div class="platform-name">${p.name}</div>
-          <div class="platform-category">文本生成 / 免费网页版</div>
-        </div>
-      `).join('');
+      if (!textContainer) {
+        console.error('textPlatformList container not found!');
+        return;
+      }
+      
+      let html = '';
+      result.textPlatforms.forEach(p => {
+        html += `
+          <div class="platform-card ${selectedTextPlatform === p.id ? 'selected' : ''}" onclick="selectTextPlatform('${p.id}', '${p.name}')">
+            <div class="platform-name">${p.name}</div>
+            <div class="platform-category">文本生成 / 免费网页版</div>
+          </div>
+        `;
+      });
+      textContainer.innerHTML = html;
 
       const imageContainer = document.getElementById('imagePlatformList');
-      imageContainer.innerHTML = result.imagePlatforms.map(p => `
-        <div class="platform-card ${selectedImagePlatform === p.id ? 'selected' : ''}" onclick="selectImagePlatform('${p.id}', '${p.name}')">
-          <div class="platform-name">${p.name}</div>
-          <div class="platform-category">文生图 / 免费网页版</div>
-        </div>
-      `).join('');
+      html = '';
+      result.imagePlatforms.forEach(p => {
+        html += `
+          <div class="platform-card ${selectedImagePlatform === p.id ? 'selected' : ''}" onclick="selectImagePlatform('${p.id}', '${p.name}')">
+            <div class="platform-name">${p.name}</div>
+            <div class="platform-category">文生图 / 免费网页版</div>
+          </div>
+        `;
+      });
+      imageContainer.innerHTML = html;
 
       const videoContainer = document.getElementById('videoPlatformList');
-      videoContainer.innerHTML = result.videoPlatforms.map(p => `
-        <div class="platform-card ${selectedVideoPlatform === p.id ? 'selected' : ''}" onclick="selectVideoPlatform('${p.id}', '${p.name}')">
-          <div class="platform-name">${p.name}</div>
-          <div class="platform-category">图生视频 / 免费网页版</div>
-        </div>
-      `).join('');
+      html = '';
+      result.videoPlatforms.forEach(p => {
+        html += `
+          <div class="platform-card ${selectedVideoPlatform === p.id ? 'selected' : ''}" onclick="selectVideoPlatform('${p.id}', '${p.name}')">
+            <div class="platform-name">${p.name}</div>
+            <div class="platform-category">图生视频 / 免费网页版</div>
+          </div>
+        `;
+      });
+      videoContainer.innerHTML = html;
+      
+      console.log('Platforms rendered:', result.textPlatforms.length + ' text, ' + result.imagePlatforms.length + ' image, ' + result.videoPlatforms.length + ' video');
     }
 
     function selectTextPlatform(id, name) {
