@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>网页AI漫剧生成器 - 文生图 + 图生视频</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      text-align: center;
+      color: white;
+      margin-bottom: 20px;
+      padding: 15px 0;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      margin-bottom: 8px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+
+    .panel h2 {
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+      color: #667eea;
+      border-bottom: 2px solid #f0f0f0;
+      padding-bottom: 10px;
+    }
+
+    /* 标签页 */
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-size: 15px;
+      font-weight: 600;
+      color: #666;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s;
+    }
+
+    .tab.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    select, input, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    select:focus, input:focus, textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-warning {
+      background: #ffc107;
+      color: #333;
+    }
+
+    .status {
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .status.connected {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status.disconnected {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status.generating {
+      background: #fff3cd;
+      color: #856404;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .result-area {
+      min-height: 550px;
+      max-height: 750px;
+      overflow-y: auto;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+
+    .result-area h1, .result-area h2, .result-area h3 {
+      margin: 15px 0 10px;
+      color: #667eea;
+    }
+
+    .platform-card {
+      padding: 10px;
+      margin: 8px 0;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .platform-card:hover {
+      border-color: #667eea;
+      background: #f8f6ff;
+    }
+
+    .platform-card.selected {
+      border-color: #667eea;
+      background: #f8f6ff;
+    }
+
+    .platform-name {
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .platform-category {
+      font-size: 11px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .action-buttons .btn {
+      flex: 1;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .empty-state svg {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    .style-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .style-tag {
+      padding: 4px 10px;
+      background: #e9ecef;
+      border-radius: 20px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .style-tag:hover {
+      background: #dee2e6;
+    }
+
+    .style-tag.selected {
+      background: #667eea;
+      color: white;
+    }
+
+    .image-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .image-item {
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .image-item img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .image-item a {
+      display: block;
+    }
+
+    .result-info {
+      background: #e7f3ff;
+      border: 1px solid #b6d4fe;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 15px;
+      font-size: 14px;
+      color: #004085;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎬 网页AI漫剧生成器</h1>
+      <p class="subtitle">基于免费网页版AI · 无需API · 漫剧 + 文生图 + 图生视频一站式生成</p>
+    </header>
+
+    <div class="main-grid">
+      <div class="panel">
+        <h2>⚙️ 控制面板</h2>
+        
+        <div id="status" class="status disconnected">
+          🔌 浏览器未连接
+        </div>
+
+        <button id="startBtn" class="btn btn-primary" onclick="startBrowser()">
+          🚀 启动浏览器
+        </button>
+        <button id="stopBtn" class="btn btn-danger" onclick="stopBrowser()" disabled style="margin-top: 10px;">
+          🛑 关闭浏览器
+        </button>
+
+        <div style="margin-top: 20px;">
+          <div class="tabs">
+            <button class="tab active" onclick="switchTab('manga')">📖 漫剧</button>
+            <button class="tab" onclick="switchTab('image')">🖼️ 文生图</button>
+            <button class="tab" onclick="switchTab('video')">🎬 图生视频</button>
+          </div>
+
+          <!-- 漫剧生成标签 -->
+          <div id="tab-manga" class="tab-content active">
+            <div class="form-group">
+              <label>文本AI平台：</label>
+              <div id="textPlatformList">
+                <!-- 动态加载 -->
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>故事主题/摘要：</label>
+              <textarea id="prompt" placeholder="例如：一个少女在魔法学校发现了隐藏的秘密..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>漫画风格：</label>
+              <div class="style-tags">
+                <span class="style-tag selected" onclick="selectStyle(this, '日式少女漫画')">日式少女漫画</span>
+                <span class="style-tag" onclick="selectStyle(this, '美式超级英雄')">美式超级英雄</span>
+                <span class="style-tag" onclick="selectStyle(this, '国漫古风')">国漫古风</span>
+                <span class="style-tag" onclick="selectStyle(this, '赛博朋克')">赛博朋克</span>
+                <span class="style-tag" onclick="selectStyle(this, '黑白推理')">黑白推理</span>
+                <span class="style-tag" onclick="selectStyle(this, '治愈系')">治愈系</span>
+              </div>
+              <input type="text" id="customStyle" placeholder="自定义风格" style="margin-top: 10px;">
+            </div>
+
+            <div class="action-buttons">
+              <button id="generateMangaBtn" class="btn btn-success" onclick="generateManga()" disabled>
+                🎨 生成漫剧
+              </button>
+              <button id="generatePromptsBtn" class="btn btn-primary" onclick="generateImagePrompts()" disabled>
+                🖼️ 生成绘图提示词
+              </button>
+            </div>
+          </div>
+
+          <!-- 文生图标签 -->
+          <div id="tab-image" class="tab-content">
+            <div class="form-group">
+              <label>文生图平台：</label>
+              <div id="imagePlatformList">
+                <!-- 动态加载 -->
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>绘图提示词：</label>
+              <textarea id="imagePrompt" placeholder="例如：可爱的二次元少女，魔法校园，阳光透过树叶..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>图片风格：</label>
+              <div class="style-tags">
+                <span class="style-tag selected" onclick="selectImageStyle(this, '日式漫画')">日式漫画</span>
+                <span class="style-tag" onclick="selectImageStyle(this, '赛璐璐风格')">赛璐璐风格</span>
+                <span class="style-tag" onclick="selectImageStyle(this, '水墨国风')">水墨国风</span>
+                <span class="style-tag" onclick="selectImageStyle(this, '写实油画')">写实油画</span>
+                <span class="style-tag" onclick="selectImageStyle(this, '二次元插画')">二次元插画</span>
+              </div>
+            </div>
+
+            <button id="generateImageBtn" class="btn btn-primary" onclick="generateImage()" disabled>
+              🎨 生成图片
+            </button>
+          </div>
+
+          <!-- 图生视频标签 -->
+          <div id="tab-video" class="tab-content">
+            <div class="form-group">
+              <label>视频生成平台：</label>
+              <div id="videoPlatformList">
+                <!-- 动态加载 -->
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>视频提示词：</label>
+              <textarea id="videoPrompt" placeholder="描述你想要的视频运动效果，例如：相机缓慢推进，人物轻轻摆动，树叶随风飘动..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>输入图片路径：</label>
+              <input type="text" id="inputImagePath" placeholder="/path/to/your/image.jpg">
+              <small style="color: #888;">需要你本地已有图片，应用会自动上传</small>
+            </div>
+
+            <button id="generateVideoBtn" class="btn btn-primary" onclick="generateVideo()" disabled>
+              🎬 生成视频
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>📝 生成结果</h2>
+        <div id="result" class="result-area">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            <p>启动浏览器后开始生成</p>
+          </div>
+        </div>
+        <div style="margin-top: 15px;">
+          <button class="btn" onclick="copyResult()" style="background: #6c757d; color: white;">
+            📋 复制结果
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    
+    let selectedTextPlatform = null;
+    let selectedImagePlatform = null;
+    let selectedVideoPlatform = null;
+    let selectedStyle = '日式少女漫画';
+    let selectedImageStyle = '日式漫画';
+    let currentResult = '';
+    let activeTab = 'manga';
+
+    function switchTab(tabName) {
+      activeTab = tabName;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(`tab-${tabName}`).classList.add('active');
+    }
+
+    function selectStyle(tag, style) {
+      document.querySelectorAll('#tab-manga .style-tag').forEach(t => t.classList.remove('selected'));
+      tag.classList.add('selected');
+      selectedStyle = style;
+    }
+
+    function selectImageStyle(tag, style) {
+      document.querySelectorAll('#tab-image .style-tag').forEach(t => t.classList.remove('selected'));
+      tag.classList.add('selected');
+      selectedImageStyle = style;
+    }
+
+    async function startBrowser() {
+      document.getElementById('status').className = 'status generating';
+      document.getElementById('status').textContent = '🔄 正在启动浏览器...';
+      document.getElementById('startBtn').disabled = true;
+
+      const result = await ipcRenderer.invoke('start-browser');
+      
+      if (result.success) {
+        document.getElementById('status').className = 'status connected';
+        document.getElementById('status').textContent = '✅ 浏览器已连接';
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = false;
+        document.getElementById('generateMangaBtn').disabled = false;
+        document.getElementById('generateImageBtn').disabled = false;
+        document.getElementById('generateVideoBtn').disabled = false;
+        renderPlatformLists(result);
+      } else {
+        document.getElementById('status').className = 'status disconnected';
+        document.getElementById('status').textContent = '❌ 启动失败：' + result.error;
+        document.getElementById('startBtn').disabled = false;
+      }
+    }
+
+    async function stopBrowser() {
+      await ipcRenderer.invoke('stop-browser');
+      document.getElementById('status').className = 'status disconnected';
+      document.getElementById('status').textContent = '🔌 浏览器已关闭';
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('stopBtn').disabled = true;
+      document.getElementById('generateMangaBtn').disabled = true;
+      document.getElementById('generateImageBtn').disabled = true;
+      document.getElementById('generateVideoBtn').disabled = true;
+      selectedTextPlatform = null;
+      selectedImagePlatform = null;
+      selectedVideoPlatform = null;
+      document.getElementById('textPlatformList').innerHTML = '';
+      document.getElementById('imagePlatformList').innerHTML = '';
+      document.getElementById('videoPlatformList').innerHTML = '';
+    }
+
+    function renderPlatformLists(result) {
+      const textContainer = document.getElementById('textPlatformList');
+      textContainer.innerHTML = result.textPlatforms.map(p => `
+        <div class="platform-card ${selectedTextPlatform === p.id ? 'selected' : ''}" onclick="selectTextPlatform('${p.id}')">
+          <div class="platform-name">${p.name}</div>
+          <div class="platform-category">文本生成 / 免费网页版</div>
+        </div>
+      `).join('');
+
+      const imageContainer = document.getElementById('imagePlatformList');
+      imageContainer.innerHTML = result.imagePlatforms.map(p => `
+        <div class="platform-card ${selectedImagePlatform === p.id ? 'selected' : ''}" onclick="selectImagePlatform('${p.id}')">
+          <div class="platform-name">${p.name}</div>
+          <div class="platform-category">文生图 / 免费网页版</div>
+        </div>
+      `).join('');
+
+      const videoContainer = document.getElementById('videoPlatformList');
+      videoContainer.innerHTML = result.videoPlatforms.map(p => `
+        <div class="platform-card ${selectedVideoPlatform === p.id ? 'selected' : ''}" onclick="selectVideoPlatform('${p.id}')">
+          <div class="platform-name">${p.name}</div>
+          <div class="platform-category">图生视频 / 免费网页版</div>
+        </div>
+      `).join('');
+    }
+
+    function selectTextPlatform(id) {
+      selectedTextPlatform = id;
+      document.querySelectorAll('#textPlatformList .platform-card').forEach(card => {
+        card.classList.remove('selected');
+      });
+      event.currentTarget.classList.add('selected');
+      document.getElementById('generatePromptsBtn').disabled = !currentResult;
+    }
+
+    function selectImagePlatform(id) {
+      selectedImagePlatform = id;
+      document.querySelectorAll('#imagePlatformList .platform-card').forEach(card => {
+        card.classList.remove('selected');
+      });
+      event.currentTarget.classList.add('selected');
+    }
+
+    function selectVideoPlatform(id) {
+      selectedVideoPlatform = id;
+      document.querySelectorAll('#videoPlatformList .platform-card').forEach(card => {
+        card.classList.remove('selected');
+      });
+      event.currentTarget.classList.add('selected');
+    }
+
+    async function generateManga() {
+      if (!selectedTextPlatform) {
+        alert('请先选择一个文本AI平台');
+        return;
+      }
+
+      const prompt = document.getElementById('prompt').value;
+      if (!prompt.trim()) {
+        alert('请输入故事主题');
+        return;
+      }
+
+      const customStyle = document.getElementById('customStyle').value.trim();
+      const style = customStyle || selectedStyle;
+
+      document.getElementById('result').innerHTML = '<div class="status generating">正在生成中，请耐心等待...AI正在创作您的漫剧剧本，这可能需要1-3分钟。</div>';
+      document.getElementById('generateMangaBtn').disabled = true;
+      document.getElementById('generatePromptsBtn').disabled = true;
+
+      const result = await ipcRenderer.invoke('generate-manga', {
+        platformId: selectedTextPlatform,
+        prompt: prompt,
+        style: style
+      });
+
+      if (result.success) {
+        currentResult = result.content;
+        document.getElementById('result').textContent = result.content;
+        document.getElementById('generatePromptsBtn').disabled = false;
+      } else {
+        document.getElementById('result').innerHTML = `<div class="status disconnected">生成失败：${result.error}</div>`;
+      }
+      
+      document.getElementById('generateMangaBtn').disabled = false;
+    }
+
+    async function generateImagePrompts() {
+      if (!selectedTextPlatform || !currentResult) {
+        alert('请先生成漫剧剧本');
+        return;
+      }
+
+      document.getElementById('result').innerHTML = '<div class="status generating">正在为每个分镜生成AI绘图提示词，请等待...<br>这将帮助您用文生图工具生成漫画图片</div>';
+      document.getElementById('generatePromptsBtn').disabled = true;
+
+      const result = await ipcRenderer.invoke('generate-image-prompts', {
+        platformId: selectedTextPlatform,
+        script: currentResult
+      });
+
+      if (result.success) {
+        const fullResult = `# 漫剧剧本\n\n${currentResult}\n\n---\n\n# AI绘图提示词\n\n${result.prompts}`;
+        currentResult = fullResult;
+        document.getElementById('result').textContent = fullResult;
+      } else {
+        document.getElementById('result').innerHTML = `<div class="status disconnected">生成失败：${result.error}</div>\n\n# 原剧本\n\n${currentResult}`;
+      }
+      
+      document.getElementById('generatePromptsBtn').disabled = false;
+    }
+
+    async function generateImage() {
+      if (!selectedImagePlatform) {
+        alert('请先选择一个文生图平台');
+        return;
+      }
+
+      const prompt = document.getElementById('imagePrompt').value;
+      if (!prompt.trim()) {
+        alert('请输入绘图提示词');
+        return;
+      }
+
+      document.getElementById('result').innerHTML = '<div class="status generating">正在生成图片，请耐心等待...这可能需要1-5分钟</div>';
+      document.getElementById('generateImageBtn').disabled = true;
+
+      const result = await ipcRenderer.invoke('generate-image', {
+        platformId: selectedImagePlatform,
+        prompt: prompt,
+        style: selectedImageStyle
+      });
+
+      if (result.success) {
+        let html = `<div class="result-info">
+          <strong>✅ 图片生成完成！</strong><br>
+          提示词：${result.prompt}<br>
+          共生成 ${result.imageUrls.length} 张图片
+        </div>
+        <div class="image-gallery">`;
+
+        result.imageUrls.forEach(url => {
+          html += `<div class="image-item"><a href="${url}" target="_blank"><img src="${url}" alt="Generated image"></a></div>`;
+        });
+
+        html += '</div>';
+        document.getElementById('result').innerHTML = html;
+        currentResult = prompt + '\\n\\n' + result.imageUrls.join('\\n');
+      } else {
+        document.getElementById('result').innerHTML = `<div class="status disconnected">生成失败：${result.error}<br><br>请在打开的浏览器中检查是否需要登录</div>`;
+      }
+      
+      document.getElementById('generateImageBtn').disabled = false;
+    }
+
+    async function generateVideo() {
+      if (!selectedVideoPlatform) {
+        alert('请先选择一个图生视频平台');
+        return;
+      }
+
+      const imagePath = document.getElementById('inputImagePath').value;
+      const prompt = document.getElementById('videoPrompt').value;
+
+      if (!imagePath.trim()) {
+        alert('请输入输入图片的本地路径');
+        return;
+      }
+
+      document.getElementById('result').innerHTML = '<div class="status generating">正在生成视频，请耐心等待...这可能需要3-10分钟</div>';
+      document.getElementById('generateVideoBtn').disabled = true;
+
+      const result = await ipcRenderer.invoke('image-to-video', {
+        platformId: selectedVideoPlatform,
+        imagePath: imagePath,
+        prompt: prompt
+      });
+
+      if (result.success) {
+        let html = `<div class="result-info">
+          <strong>✅ 视频生成完成！</strong><br>
+          提示词：${result.prompt || '无'}<br>
+        </div>`;
+
+        if (result.videoUrl) {
+          html += `<video controls src="${result.videoUrl}" style="width: 100%; border-radius: 8px;"></video>`;
+        } else {
+          html += `<p>视频已生成，请在浏览器中查看和下载：<br><a href="${result.url}" target="_blank">${result.url}</a></p>`;
+        }
+
+        document.getElementById('result').innerHTML = html;
+        currentResult = `视频生成完成:\\n${result.videoUrl || result.url}`;
+      } else {
+        document.getElementById('result').innerHTML = `<div class="status disconnected">生成失败：${result.error}<br><br>请先在打开的浏览器中登录账号</div>`;
+      }
+      
+      document.getElementById('generateVideoBtn').disabled = false;
+    }
+
+    function copyResult() {
+      if (!currentResult) {
+        alert('没有内容可复制');
+        return;
+      }
+      navigator.clipboard.writeText(currentResult).then(() => {
+        alert('已复制到剪贴板！');
+      }).catch(() => {
+        alert('复制失败，请手动复制');
+      });
+    }
+  </script>
+</body>
+</html>
