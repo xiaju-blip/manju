@@ -1,15 +1,14 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, session } = require('electron');
 const path = require('path');
 const { chromium } = require('playwright');
 
 let mainWindow;
-let browserInstance = null;
-let contextInstance = null;
+let aiBrowserWindow = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1400,
+    height: 900,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -22,12 +21,30 @@ function createWindow() {
 
   mainWindow.on('closed', function () {
     mainWindow = null;
+    if (aiBrowserWindow) {
+      aiBrowserWindow.close();
+      aiBrowserWindow = null;
+    }
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  // 允许跨域
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Access-Control-Allow-Origin': ['*']
+      }
+    });
+  });
+  createWindow();
+});
 
 app.on('window-all-closed', function () {
+  if (aiBrowserWindow) {
+    aiBrowserWindow.close();
+  }
   if (process.platform !== 'darwin') app.quit();
 });
 
@@ -122,16 +139,6 @@ const imagePlatforms = {
 
 // 支持的图生视频平台
 const videoPlatforms = {
-  runwayml: {
-    name: 'Runway ML',
-    url: 'https://runwayml.com/',
-    loginUrl: 'https://runwayml.com/login/',
-    workspaceUrl: 'https://app.runwayml.com/',
-    inputSelector: 'input[type="file"], input[name="file"]',
-    submitSelector: '.generate-btn, button.generate',
-    resultSelector: '.video-output video',
-    waitSelector: '.generating, .processing'
-  },
   pika: {
     name: 'Pika Labs',
     url: 'https://pika.art/',
@@ -147,338 +154,265 @@ const videoPlatforms = {
     submitSelector: '.generate-btn, button.create',
     resultSelector: '.video-card video, .result-video',
     waitSelector: '.generating, .processing'
+  },
+  runwayml: {
+    name: 'Runway ML',
+    url: 'https://runwayml.com/',
+    loginUrl: 'https://runwayml.com/login/',
+    workspaceUrl: 'https://app.runwayml.com/',
+    inputSelector: 'input[type="file"], input[name="file"]',
+    submitSelector: '.generate-btn, button.generate',
+    resultSelector: '.video-output video',
+    waitSelector: '.generating, .processing'
   }
 };
 
 // 合并所有平台
 const allPlatforms = { ...textPlatforms, ...imagePlatforms, ...videoPlatforms };
 
-// 启动浏览器
-ipcMain.handle('start-browser', async () => {
+// 打开内置浏览器窗口加载AI平台
+ipcMain.handle('open-platform', async (event, { platformId }) => {
   try {
-    if (!browserInstance) {
-      browserInstance = await chromium.launch({
-        headless: false,
-        args: ['--start-maximized']
-      });
-      contextInstance = await browserInstance.newContext({
-        viewport: null,
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      });
+    const platform = allPlatforms[platformId];
+    if (!platform) {
+      return { success: false, error: '不支持的平台' };
     }
+
+    // 如果已经有窗口，关闭它
+    if (aiBrowserWindow && !aiBrowserWindow.isDestroyed()) {
+      aiBrowserWindow.close();
+    }
+
+    // 创建新窗口加载AI平台
+    aiBrowserWindow = new BrowserWindow({
+      width: 1000,
+      height: 800,
+      title: `${platform.name} - 内置浏览器`,
+      parent: mainWindow,
+      modal: false,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true
+      }
+    });
+
+    aiBrowserWindow.loadURL(platform.url);
+
+    aiBrowserWindow.on('closed', () => {
+      aiBrowserWindow = null;
+    });
+
     return { 
       success: true, 
-      textPlatforms: Object.keys(textPlatforms).map(key => ({
-        id: key,
-        name: textPlatforms[key].name
-      })),
-      imagePlatforms: Object.keys(imagePlatforms).map(key => ({
-        id: key,
-        name: imagePlatforms[key].name
-      })),
-      videoPlatforms: Object.keys(videoPlatforms).map(key => ({
-        id: key,
-        name: videoPlatforms[key].name
-      }))
+      url: platform.url,
+      name: platform.name
     };
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-// 生成漫剧内容
-ipcMain.handle('generate-manga', async (event, { platformId, prompt, style }) => {
+// 获取页面内容（文本生成结果）
+ipcMain.handle('extract-result', async (event, { platformId }) => {
   try {
-    const platform = aiPlatforms[platformId];
-    if (!platform) {
-      return { success: false, error: '不支持的AI平台' };
+    const platform = allPlatforms[platformId];
+    if (!platform || !aiBrowserWindow || aiBrowserWindow.isDestroyed()) {
+      return { success: false, error: '浏览器窗口未打开' };
     }
 
-    const page = await contextInstance.newPage();
-    await page.goto(platform.url, { waitUntil: 'networkidle', timeout: 60000 });
-
-    // 等待输入框加载
-    await page.waitForTimeout(2000); // 额外等待页面JavaScript加载
-    await page.waitForSelector(platform.inputSelector, { timeout: 30000 });
+    const webContents = aiBrowserWindow.webContents;
     
-    // 构造完整提示词
-    const fullPrompt = `请根据以下需求创作一个漫剧剧本：${prompt}。风格要求：${style}。
-请按照以下格式输出：
-1. 故事梗概：简要描述整个故事
-2. 分镜列表：每个分镜包含序号、场景描述、对话内容、画面提示
-3. 角色设定：列出主要角色的人设
-要求内容生动，画面感强，适合改编成漫画。`;
-
-    // 输入提示词
-    await page.fill(platform.inputSelector, fullPrompt);
-    
-    // 点击提交
-    await page.click(platform.submitSelector);
-    
-    // 等待生成完成
-    await page.waitForTimeout(5000);
-    
-    // 等待生成结束（检测加载完成）
-    try {
-      await page.waitForSelector(platform.waitSelector, { 
-        state: 'detached', 
-        timeout: 180000 
+    // 执行JS提取结果
+    const result = await webContents.executeJavaScript(`
+      new Promise((resolve) => {
+        const selector = '${platform.outputSelector}';
+        const el = document.querySelector(selector);
+        if (!el) {
+          resolve({ success: false, error: '找不到结果元素' });
+          return;
+        }
+        resolve({ 
+          success: true, 
+          content: el.textContent,
+          html: el.innerHTML
+        });
       });
-    } catch (e) {
-      // 如果超时，继续尝试获取结果
-    }
-    
-    // 获取输出内容
-    await page.waitForSelector(platform.outputSelector, { timeout: 10000 });
-    const content = await page.$eval(platform.outputSelector, el => el.innerHTML);
-    const textContent = await page.$eval(platform.outputSelector, el => el.textContent);
-    
-    return { 
-      success: true, 
-      content: textContent,
-      html: content,
-      url: page.url()
-    };
-    
+    `);
+
+    return result;
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-// 生成图片提示词
-ipcMain.handle('generate-image-prompts', async (event, { platformId, script }) => {
+// 在AI页面自动填充提示词并提交
+ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
   try {
-    const platform = textPlatforms[platformId];
-    if (!platform) {
-      return { success: false, error: '不支持的AI平台' };
+    const platform = allPlatforms[platformId];
+    if (!platform || !aiBrowserWindow || aiBrowserWindow.isDestroyed()) {
+      return { success: false, error: '浏览器窗口未打开' };
     }
 
-    const page = await contextInstance.newPage();
-    await page.goto(platform.url, { waitUntil: 'networkidle', timeout: 60000 });
-    await page.waitForTimeout(2000); // 额外等待页面JavaScript加载
-    await page.waitForSelector(platform.inputSelector, { timeout: 30000 });
-    
-    const prompt = `根据以下漫剧剧本，为每个分镜生成AI绘图提示词，适合用Midjourney或Stable Diffusion生成漫画风格图片：${script}。
-请为每个分镜输出一段详细的绘图提示词，包含风格、构图、色彩、细节描述。输出格式：分镜序号：[提示词]`;
-    
-    await page.fill(platform.inputSelector, prompt);
-    await page.click(platform.submitSelector);
-    
-    await page.waitForTimeout(5000);
-    
-    try {
-      await page.waitForSelector(platform.waitSelector, { 
-        state: 'detached', 
-        timeout: 180000 
+    const webContents = aiBrowserWindow.webContents;
+
+    const result = await webContents.executeJavaScript(`
+      new Promise(async (resolve) => {
+        try {
+          const inputSelector = '${platform.inputSelector}';
+          const submitSelector = '${platform.submitSelector}';
+          
+          // 等待输入框加载
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          let input = document.querySelector(inputSelector);
+          if (!input) {
+            // 尝试多个选择器
+            const selectors = inputSelector.split(', ');
+            for (const sel of selectors) {
+              input = document.querySelector(sel);
+              if (input) break;
+            }
+          }
+          
+          if (!input) {
+            resolve({ success: false, error: '找不到输入框' });
+            return;
+          }
+          
+          // 填充提示词
+          if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
+            input.value = '${prompt.replace(/\\n/g, '\\\\n').replace(/'/g, "\\\\'")}';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // 点击提交按钮
+          let button = document.querySelector(submitSelector);
+          if (!button) {
+            const selectors = submitSelector.split(', ');
+            for (const sel of selectors) {
+              button = document.querySelector(sel);
+              if (button) break;
+            }
+          }
+          
+          if (!button) {
+            resolve({ success: false, error: '找不到提交按钮' });
+            return;
+          }
+          
+          button.click();
+          resolve({ success: true });
+        } catch (e) {
+          resolve({ success: false, error: e.message });
+        }
       });
-    } catch (e) {}
-    
-    await page.waitForSelector(platform.outputSelector, { timeout: 10000 });
-    const textContent = await page.$eval(platform.outputSelector, el => el.textContent);
-    
-    return { success: true, prompts: textContent };
-    
+    `);
+
+    return result;
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-// 文生图 - 生成图片
-ipcMain.handle('generate-image', async (event, { platformId, prompt, size, style }) => {
+// 提取生成的图片URL
+ipcMain.handle('extract-images', async (event, { platformId }) => {
   try {
     const platform = imagePlatforms[platformId];
-    if (!platform) {
-      return { success: false, error: '不支持的文生图平台' };
+    if (!platform || !aiBrowserWindow || aiBrowserWindow.isDestroyed()) {
+      return { success: false, error: '浏览器窗口未打开' };
     }
 
-    const page = await contextInstance.newPage();
-    await page.goto(platform.url, { waitUntil: 'networkidle', timeout: 60000 });
-    await page.waitForTimeout(3000);
-    await page.waitForSelector(platform.inputSelector, { timeout: 30000 });
-    
-    // 组合完整提示词
-    const fullPrompt = `${prompt}，风格：${style}，漫画风格，高质量，清晰`;
-    
-    await page.fill(platform.inputSelector, fullPrompt);
-    await page.waitForTimeout(1000);
-    await page.click(platform.submitSelector);
-    
-    // 等待生成
-    await page.waitForTimeout(10000);
-    
-    try {
-      await page.waitForSelector(platform.waitSelector, { 
-        state: 'detached', 
-        timeout: 300000 
+    const webContents = aiBrowserWindow.webContents;
+
+    const result = await webContents.executeJavaScript(`
+      new Promise((resolve) => {
+        const selector = '${platform.resultSelector}';
+        let images = document.querySelectorAll(selector);
+        if (!images || images.length === 0) {
+          const el = document.querySelector(selector);
+          if (el && el.tagName === 'IMG') {
+            images = [el];
+          } else {
+            resolve({ success: false, error: '找不到图片' });
+            return;
+          }
+        }
+        const urls = Array.from(images).map(img => img.src).filter(url => url);
+        resolve({ success: true, imageUrls: urls });
       });
-    } catch (e) {}
-    
-    // 等待图片结果
-    await page.waitForSelector(platform.resultSelector, { timeout: 60000 });
-    
-    // 获取所有生成的图片URL
-    const imageUrls = await page.$eval(platform.resultSelector, (el) => {
-      if (el.tagName === 'IMG') {
-        return [el.src];
-      }
-      const imgs = el.querySelectorAll('img');
-      return Array.from(imgs).map(img => img.src);
-    });
-    
-    const screenshot = await page.screenshot();
-    
-    return { 
-      success: true, 
-      imageUrls: imageUrls,
-      prompt: fullPrompt,
-      url: page.url()
-    };
-    
+    `);
+
+    return result;
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-// 图生视频
-ipcMain.handle('image-to-video', async (event, { platformId, imagePath, prompt }) => {
+// 提取视频URL
+ipcMain.handle('extract-video', async (event, { platformId }) => {
   try {
     const platform = videoPlatforms[platformId];
-    if (!platform) {
-      return { success: false, error: '不支持的图生视频平台' };
+    if (!platform || !aiBrowserWindow || aiBrowserWindow.isDestroyed()) {
+      return { success: false, error: '浏览器窗口未打开' };
     }
 
-    const page = await contextInstance.newPage();
-    await page.goto(platform.url, { waitUntil: 'networkidle', timeout: 60000 });
-    await page.waitForTimeout(3000);
-    
-    // 如果需要登录，提示用户
-    try {
-      await page.waitForSelector(platform.inputSelector, { timeout: 15000 });
-    } catch (e) {
-      return { 
-        success: false, 
-        error: '需要先登录，请在打开的浏览器中登录账号后重新生成',
-        url: page.url()
-      };
-    }
-    
-    // 上传图片（如果支持）
-    if (platform.inputSelector.includes('file')) {
-      await page.setInputFiles(platform.inputSelector, imagePath);
-      await page.waitForTimeout(2000);
-    } else if (prompt && platform.inputSelector) {
-      // 文本提示
-      await page.fill(platform.inputSelector, prompt);
-      await page.waitForTimeout(1000);
-    }
-    
-    // 点击生成
-    await page.click(platform.submitSelector);
-    
-    // 等待处理
-    await page.waitForTimeout(15000);
-    
-    try {
-      await page.waitForSelector(platform.waitSelector, { 
-        state: 'detached', 
-        timeout: 600000 
+    const webContents = aiBrowserWindow.webContents;
+
+    const result = await webContents.executeJavaScript(`
+      new Promise((resolve) => {
+        const selector = '${platform.resultSelector}';
+        let video = document.querySelector(selector);
+        if (!video) {
+          const container = document.querySelector(selector);
+          if (container) {
+            video = container.querySelector('video');
+          }
+        }
+        if (!video) {
+          resolve({ success: false, error: '找不到视频' });
+          return;
+        }
+        resolve({ success: true, videoUrl: video.src });
       });
-    } catch (e) {}
-    
-    // 获取视频结果
-    await page.waitForSelector(platform.resultSelector, { timeout: 120000 });
-    
-    const videoUrl = await page.$eval(platform.resultSelector, el => {
-      if (el.tagName === 'VIDEO') {
-        return el.src;
-      }
-      const video = el.querySelector('video');
-      return video ? video.src : null;
-    });
-    
-    const screenshot = await page.screenshot();
-    
-    return { 
-      success: true, 
-      videoUrl: videoUrl,
-      prompt: prompt,
-      url: page.url()
-    };
-    
+    `);
+
+    return result;
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-// 生成漫剧内容
-ipcMain.handle('generate-manga', async (event, { platformId, prompt, style }) => {
+// 关闭内置浏览器
+ipcMain.handle('close-browser', async () => {
   try {
-    const platform = textPlatforms[platformId];
-    if (!platform) {
-      return { success: false, error: '不支持的AI平台' };
-    }
-
-    const page = await contextInstance.newPage();
-    await page.goto(platform.url, { waitUntil: 'networkidle', timeout: 60000 });
-
-    // 等待输入框加载
-    await page.waitForTimeout(2000); // 额外等待页面JavaScript加载
-    await page.waitForSelector(platform.inputSelector, { timeout: 30000 });
-    
-    // 构造完整提示词
-    const fullPrompt = `请根据以下需求创作一个漫剧剧本：${prompt}。风格要求：${style}。
-请按照以下格式输出：
-1. 故事梗概：简要描述整个故事
-2. 分镜列表：每个分镜包含序号、场景描述、对话内容、画面提示
-3. 角色设定：列出主要角色的人设
-要求内容生动，画面感强，适合改编成漫画。`;
-
-    // 输入提示词
-    await page.fill(platform.inputSelector, fullPrompt);
-    
-    // 点击提交
-    await page.click(platform.submitSelector);
-    
-    // 等待生成完成
-    await page.waitForTimeout(5000);
-    
-    // 等待生成结束（检测加载完成）
-    try {
-      await page.waitForSelector(platform.waitSelector, { 
-        state: 'detached', 
-        timeout: 180000 
-      });
-    } catch (e) {
-      // 如果超时，继续尝试获取结果
-    }
-    
-    // 获取输出内容
-    await page.waitForSelector(platform.outputSelector, { timeout: 10000 });
-    const content = await page.$eval(platform.outputSelector, el => el.innerHTML);
-    const textContent = await page.$eval(platform.outputSelector, el => el.textContent);
-    
-    return { 
-      success: true, 
-      content: textContent,
-      html: content,
-      url: page.url()
-    };
-    
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-});
-
-// 关闭浏览器
-ipcMain.handle('stop-browser', async () => {
-  try {
-    if (browserInstance) {
-      await browserInstance.close();
-      browserInstance = null;
-      contextInstance = null;
+    if (aiBrowserWindow && !aiBrowserWindow.isDestroyed()) {
+      aiBrowserWindow.close();
+      aiBrowserWindow = null;
     }
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }
+});
+
+// 获取平台列表
+ipcMain.handle('get-platforms', async () => {
+  return { 
+    success: true, 
+    textPlatforms: Object.keys(textPlatforms).map(key => ({
+      id: key,
+      name: textPlatforms[key].name
+    })),
+    imagePlatforms: Object.keys(imagePlatforms).map(key => ({
+      id: key,
+      name: imagePlatforms[key].name
+    })),
+    videoPlatforms: Object.keys(videoPlatforms).map(key => ({
+      id: key,
+      name: videoPlatforms[key].name
+    }))
+  };
 });
