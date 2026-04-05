@@ -201,7 +201,9 @@ ipcMain.handle('open-platform', async (event, { platformId }) => {
     aiBrowserWindow.webContents.openDevTools();
     
     aiBrowserWindow.on('ready-to-show', () => {
-      aiBrowserWindow.show();
+      if (aiBrowserWindow && !aiBrowserWindow.isDestroyed()) {
+        aiBrowserWindow.show();
+      }
     });
     
     aiBrowserWindow.loadURL(platform.url, {
