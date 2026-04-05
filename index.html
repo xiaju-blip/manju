@@ -726,7 +726,7 @@
       
       if (result.success) {
         document.getElementById('status').className = 'status ready';
-        document.getElementById('status').textContent = `✅ ${result.name} 已在内置浏览器打开，请先登录账号`;
+        document.getElementById('status').textContent = `✅ ${result.name} 已打开，请在弹出窗口中**登录账号**，等待页面完全加载后再点击生成`;
         // 启用按钮
         if (activeTab === 'manga') {
           document.getElementById('generateBtn').disabled = false;
@@ -738,6 +738,7 @@
           document.getElementById('generateVideoBtn').disabled = false;
           document.getElementById('getVideoBtn').disabled = false;
         }
+        alert(`${result.name} 已打开\n\n请：\n1. 在弹出窗口中登录你的账号\n2. 等待页面完全加载（看到输入框）\n3. 登录完成后，回到主界面点击自动生成`);
       } else {
         document.getElementById('status').className = 'status waiting';
         document.getElementById('status').textContent = `❌ 打开失败：${result.error}`;
