@@ -794,13 +794,13 @@
       console.log('auto-submit result:', result);
 
       if (!result.success) {
-        document.getElementById('result').innerHTML = `<div class="status disconnected">提交失败：${result.error}</div>`;
+        document.getElementById('result').innerHTML = `<div class="status disconnected">自动提交失败：${result.error}<br><br>💡 提示：已经填充好提示词了，请你<strong>手动点击发送按钮</strong>，生成完点击「📥 获取结果」即可</div>`;
         document.getElementById('status').className = 'status ready';
-        document.getElementById('status').textContent = `❌ 提交失败：${result.error}`;
+        document.getElementById('status').textContent = `⚠️ 自动提交失败，请手动点击发送`;
       } else {
-        document.getElementById('result').innerHTML = '<div class="status waiting">✅ 已自动提交！请在内置浏览器中等待AI生成完成，完成后点击「📥 获取结果</div>';
+        document.getElementById('result').innerHTML = '<div class="status waiting">✅ 提示词已填充完成！请在<b>内置浏览器窗口</b>中检查提示词，然后点击发送按钮开始生成<br>生成完成后，回到这里点击「📥 获取结果」</div>';
         document.getElementById('status').className = 'status ready';
-        document.getElementById('status').textContent = '✅ 已提交，请等待AI生成完成';
+        document.getElementById('status').textContent = '✅ 提示词已填充，请手动点击发送';
       }
       
       document.getElementById('generateBtn').disabled = false;
@@ -885,13 +885,13 @@
       console.log('auto-submit result:', result);
 
       if (!result.success) {
-        document.getElementById('result').innerHTML = `<div class="status disconnected">提交失败：${result.error}</div>`;
+        document.getElementById('result').innerHTML = `<div class="status disconnected">自动提交失败：${result.error}<br><br>💡 提示：已经填充好提示词了，请你<strong>手动点击生成按钮</strong>，生成完点击「📥 获取生成的图片」即可</div>`;
         document.getElementById('status').className = 'status ready';
-        document.getElementById('status').textContent = `❌ 提交失败：${result.error}`;
+        document.getElementById('status').textContent = `⚠️ 自动提交失败，请手动点击生成`;
       } else {
-        document.getElementById('result').innerHTML = '<div class="status waiting">✅ 已自动提交！请在内置浏览器中等待AI生成完成，完成后点击「📥 获取生成的图片</div>';
+        document.getElementById('result').innerHTML = '<div class="status waiting">✅ 提示词已填充完成！请在<b>内置浏览器窗口</b>中检查提示词，然后点击生成按钮开始生成<br>生成完成后，回到这里点击「📥 获取生成的图片」</div>';
         document.getElementById('status').className = 'status ready';
-        document.getElementById('status').textContent = '✅ 已提交，请等待AI生成完成';
+        document.getElementById('status').textContent = '✅ 提示词已填充，请手动点击生成';
       }
       
       document.getElementById('generateImageBtn').disabled = false;

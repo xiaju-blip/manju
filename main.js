@@ -76,9 +76,9 @@ const textPlatforms = {
   qwen: {
     name: '通义千问',
     url: 'https://tongyi.aliyun.com/qianwen/',
-    inputSelector: 'div[contenteditable="true"], .prompt-editor textarea, textarea, .quill-editor div, #editor-container div',
-    submitSelector: 'button[data-testid="send"], button[data-testid="reply-btn"], button[class*="send"], .send-btn, .action-bar button:last-child, footer button:last-child, .send-button',
-    outputSelector: '.answer-content, .markdown-body, .response-content, .content-wrapper',
+    inputSelector: 'div[contenteditable="true"], div[data-testid="prompt-editor"], .prompt-editor textarea, textarea, .quill-editor div',
+    submitSelector: 'button[data-testid="send"], button[data-testid="reply-btn"], .action-bar button:last-child, button:contains("发送"), button.send, .send-button, footer button:last-child',
+    outputSelector: '.answer-content, .markdown-body, .response-content, .content-wrapper, div[data-testid="answer-content"]',
     waitSelector: '.generating, .loading, .streaming',
     category: 'text'
   },
