@@ -277,108 +277,108 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
     
     const js = 
       'new Promise(async (resolve) => {' +
-        'console.log("auto-submit 开始执行JavaScript");' +
+        'console.log(\"auto-submit 开始执行JavaScript\");' +
         'try {' +
-          'const inputSelector = "' + platform.inputSelector.replace(/"/g, '\\"') + '";' +
-          'const submitSelector = "' + platform.submitSelector.replace(/"/g, '\\"') + '";' +
-          'console.log("选择器:", { inputSelector, submitSelector });' +
+          'const inputSelector = \"' + platform.inputSelector.replace(/"/g, '\\"') + '\";' +
+          'const submitSelector = \"' + platform.submitSelector.replace(/"/g, '\\"') + '\";' +
+          'console.log(\"选择器:\", { inputSelector, submitSelector });' +
           'await new Promise(resolve => setTimeout(resolve, 6000));' +
           'let input = null;' +
           'const inputSelectors = [' + inputSelectorsStr + '];' +
           'for (const sel of inputSelectors) {' +
             'input = document.querySelector(sel);' +
-            'console.log("尝试选择器", sel, "找到:", !!input);' +
+            'console.log(\"尝试选择器\", sel, \"找到:\", !!input);' +
             'if (input) break;' +
           '}' +
           'if (!input) {' +
             'await new Promise(resolve => setTimeout(resolve, 4000));' +
             'for (const sel of inputSelectors) {' +
               'input = document.querySelector(sel);' +
-              'console.log("重试选择器", sel, "找到:", !!input);' +
+              'console.log(\"重试选择器\", sel, \"找到:\", !!input);' +
               'if (input) break;' +
             '}' +
           '}' +
           'if (!input) {' +
-            'console.log("找不到输入框");' +
-            'resolve({ success: false, error: "找不到输入框，请等待页面完全加载后重试" });' +
+            'console.log(\"找不到输入框\");' +
+            'resolve({ success: false, error: \"找不到输入框，请等待页面完全加载后重试\" });' +
             'return;' +
           '}' +
           'const prompt = ' + escapedPrompt + ';' +
           'input.focus();' +
           'if (input.value !== undefined) {' +
-            'input.value = "";' +
+            'input.value = \"\";' +
           '} else if (input.textContent !== undefined) {' +
-            'input.textContent = "";' +
+            'input.textContent = \"\";' +
           '}' +
-          'input.scrollIntoView({behavior: "smooth", block: "center"});' +
+          'input.scrollIntoView({behavior: \"smooth\", block: \"center\"});' +
           'await new Promise(resolve => setTimeout(resolve, 1000));' +
-          'console.log("开始逐字输入，长度: " + prompt.length);' +
+          'console.log(\"开始逐字输入，长度: \" + prompt.length);' +
           '// 对现代框架使用正确的事件类型，触发字数统计' +
           'if (input.isContentEditable) {' +
-            'input.textContent = "";' +
-            'input.innerHTML = "";' +
+            'input.textContent = \"\";' +
+            'input.innerHTML = \"\";' +
             'await new Promise(resolve => setTimeout(resolve, 800));' +
             'for (let i = 0; i < prompt.length; i++) {' +
               'input.textContent += prompt[i];' +
               '// 使用 InputEvent 而不是普通 Event，React/Vue 需要这个' +
-              'input.dispatchEvent(new InputEvent("input", { bubbles: true, data: prompt[i] }));' +
-              'input.dispatchEvent(new Event("change", { bubbles: true }));' +
-              'input.dispatchEvent(new Event("keyup", { bubbles: true }));' +
+              'input.dispatchEvent(new InputEvent(\"input\", { bubbles: true, data: prompt[i] }));' +
+              'input.dispatchEvent(new Event(\"change\", { bubbles: true }));' +
+              'input.dispatchEvent(new Event(\"keyup\", { bubbles: true }));' +
               'await new Promise(resolve => setTimeout(resolve, 5));' +
             '}' +
-          '} else if (input.tagName === "TEXTAREA" || input.tagName === "INPUT") {' +
-            'input.value = "";' +
+          '} else if (input.tagName === \"TEXTAREA\" || input.tagName === \"INPUT\") {' +
+            'input.value = \"\";' +
             'await new Promise(resolve => setTimeout(resolve, 800));' +
             'for (let i = 0; i < prompt.length; i++) {' +
               'input.value += prompt[i];' +
-              'input.dispatchEvent(new InputEvent("input", { bubbles: true, data: prompt[i] }));' +
-              'input.dispatchEvent(new Event("change", { bubbles: true }));' +
-              'input.dispatchEvent(new Event("keyup", { bubbles: true }));' +
+              'input.dispatchEvent(new InputEvent(\"input\", { bubbles: true, data: prompt[i] }));' +
+              'input.dispatchEvent(new Event(\"change\", { bubbles: true }));' +
+              'input.dispatchEvent(new Event(\"keyup\", { bubbles: true }));' +
               'await new Promise(resolve => setTimeout(resolve, 5));' +
             '}' +
-          '} else if (typeof input.innerHTML !== "undefined") {' +
+          '} else if (typeof input.innerHTML !== \"undefined\") {' +
             'input.innerHTML = prompt;' +
           '}' +
           '// 触发所有可能的事件，确保框架检测到内容变化' +
-          'input.dispatchEvent(new Event("change", { bubbles: true }));' +
-          'input.dispatchEvent(new Event("beforeinput", { bubbles: true }));' +
-          'input.dispatchEvent(new Event("input", { bubbles: true }));' +
-          'input.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));' +
-          'input.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));' +
-          'input.dispatchEvent(new Event("keyup", { bubbles: true }));' +
-          'input.dispatchEvent(new Event("keydown", { bubbles: true }));' +
-          'input.dispatchEvent(new Event("click", { bubbles: true }));' +
-          'input.dispatchEvent(new Event("focus", { bubbles: true }));' +
-          'console.log("提示词填充完成，长度: " + prompt.length);' +
+          'input.dispatchEvent(new Event(\"change\", { bubbles: true }));' +
+          'input.dispatchEvent(new Event(\"beforeinput\", { bubbles: true }));' +
+          'input.dispatchEvent(new Event(\"input\", { bubbles: true }));' +
+          'input.dispatchEvent(new CompositionEvent(\"compositionstart\", { bubbles: true }));' +
+          'input.dispatchEvent(new CompositionEvent(\"compositionend\", { bubbles: true }));' +
+          'input.dispatchEvent(new Event(\"keyup\", { bubbles: true }));' +
+          'input.dispatchEvent(new Event(\"keydown\", { bubbles: true }));' +
+          'input.dispatchEvent(new Event(\"click\", { bubbles: true }));' +
+          'input.dispatchEvent(new Event(\"focus\", { bubbles: true }));' +
+          'console.log(\"提示词填充完成，长度: \" + prompt.length);' +
           'await new Promise(resolve => setTimeout(resolve, 2000));' +
           'let button = null;' +
           'const submitSelectors = [' + submitSelectorsStr + '];' +
           'for (const sel of submitSelectors) {' +
             'button = document.querySelector(sel);' +
-            'console.log("尝试按钮选择器", sel, "找到:", !!button);' +
+            'console.log(\"尝试按钮选择器\", sel, \"找到:\", !!button);' +
             'if (button) break;' +
           '}' +
           'if (!button) {' +
             'await new Promise(resolve => setTimeout(resolve, 2000));' +
             'for (const sel of submitSelectors) {' +
               'button = document.querySelector(sel);' +
-              'console.log("重试按钮选择器", sel, "找到:", !!button);' +
+              'console.log(\"重试按钮选择器\", sel, \"找到:\", !!button);' +
               'if (button) break;' +
             '}' +
           '}' +
           'if (!button) {' +
-            'console.log("找不到提交按钮");' +
-            'resolve({ success: false, error: "找不到提交按钮，请等待页面完全加载后重试" });' +
+            'console.log(\"找不到提交按钮\");' +
+            'resolve({ success: false, error: \"找不到提交按钮，请等待页面完全加载后重试\" });' +
             'return;' +
           '}' +
-          'console.log("点击提交按钮");' +
-          'button.scrollIntoView({behavior: "smooth", block: "center"});' +
+          'console.log(\"点击提交按钮\");' +
+          'button.scrollIntoView({behavior: \"smooth\", block: \"center\"});' +
           'await new Promise(resolve => setTimeout(resolve, 500));' +
           'button.click();' +
           'setTimeout(() => button.click(), 500);' +
           'resolve({ success: true });' +
         '} catch (e) {' +
-          'console.error("JavaScript执行错误:", e);' +
+          'console.error(\"JavaScript执行错误:\", e);' +
           'resolve({ success: false, error: e.message });' +
         '}' +
       '});';
