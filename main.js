@@ -68,8 +68,8 @@ const textPlatforms = {
   deepseek: {
     name: 'DeepSeek',
     url: 'https://chat.deepseek.com/',
-    inputSelector: 'div[contenteditable="true"], textarea[placeholder*="深"], textarea',
-    submitSelector: 'button[data-testid="send-button"], .send-button, button[type="submit"], button[aria-label="发送"]',
+    inputSelector: 'div[contenteditable="true"], #chat-input textarea, textarea[placeholder*="深"], textarea',
+    submitSelector: 'button[data-testid="send-button"], .send-button, button[type="submit"], button[aria-label="发送"], .chat-footer button:last-child',
     outputSelector: '.ds-markdown, .markdown-section',
     waitSelector: '.result-streaming, .streaming',
     category: 'text'
@@ -77,26 +77,26 @@ const textPlatforms = {
   qwen: {
     name: '通义千问',
     url: 'https://tongyi.aliyun.com/qianwen/',
-    inputSelector: 'div[contenteditable="true"], textarea',
-    submitSelector: 'button[data-testid="reply-btn"], button[class*="send"], button[class*="submit"], .send-btn',
-    outputSelector: '.answer-content, .markdown-body',
-    waitSelector: '.generating, .loading',
+    inputSelector: 'div[contenteditable="true"], .prompt-editor textarea, textarea',
+    submitSelector: 'button[data-testid="send"], button[data-testid="reply-btn"], button[class*="send"], .send-btn, .action-bar button:last-child',
+    outputSelector: '.answer-content, .markdown-body, .response-content',
+    waitSelector: '.generating, .loading, .streaming',
     category: 'text'
   },
   doubao: {
     name: '豆包',
     url: 'https://www.doubao.com/',
-    inputSelector: 'div[contenteditable="true"], textarea',
-    submitSelector: 'button[data-testid="send-button"], button.send-button, .btn-submit',
-    outputSelector: '.answer-content, .markdown-content',
-    waitSelector: '.loading, .generating',
+    inputSelector: 'div[contenteditable="true"], .ql-editor, textarea',
+    submitSelector: 'button[data-testid="send-button"], button.send-button, .btn-submit, .bottom-action button:last-child',
+    outputSelector: '.answer-content, .markdown-content, .content-block',
+    waitSelector: '.loading, .generating, .streaming',
     category: 'text'
   },
   zhipu: {
     name: '智谱清言',
     url: 'https://chatglm.cn/',
-    inputSelector: 'textarea, div[contenteditable="true"]',
-    submitSelector: 'button[aria-label="发送"], button.send-btn',
+    inputSelector: 'div[contenteditable="true"], .editor-inner textarea, textarea',
+    submitSelector: 'button[aria-label="发送"], button.send-btn, .bottom-container button:last-child',
     outputSelector: '.markdown-body, .content',
     waitSelector: '.generating, .streaming',
     category: 'text'
