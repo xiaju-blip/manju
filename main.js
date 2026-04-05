@@ -273,9 +273,13 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
   try {
     console.log('auto-submit 开始:', { platformId, promptLength: prompt.length });
     const platform = allPlatforms[platformId];
-    if (!platform || !aiBrowserWindow || aiBrowserWindow.isDestroyed()) {
-      console.log('auto-submit 失败:', '浏览器窗口未打开');
-      return { success: false, error: '浏览器窗口未打开，请先打开平台' };
+    if (!aiBrowserWindow || aiBrowserWindow.isDestroyed()) {
+      console.log('auto-submit 失败: 浏览器窗口未打开/已销毁');
+      return { success: false, error: '浏览器窗口未打开，请先点击打开平台' };
+    }
+    if (!platform) {
+      console.log('auto-submit 失败: 不支持的平台', platformId);
+      return { success: false, error: '不支持的平台' };
     }
 
     const webContents = aiBrowserWindow.webContents;
