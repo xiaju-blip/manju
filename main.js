@@ -291,8 +291,8 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           const submitSelector = '${platform.submitSelector}';
           console.log('选择器:', { inputSelector, submitSelector });
           
-          // 等待输入框加载
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // 等待页面完全加载
+          await new Promise(resolve => setTimeout(resolve, 4000));
           
           let input = null;
           // 尝试多个选择器
@@ -303,9 +303,19 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
             if (input) break;
           }
           
+          // 如果还是找不到，等待更长时间再试一次
+          if (!input) {
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            for (const sel of selectors) {
+              input = document.querySelector(sel);
+              console.log('重试选择器', sel, '找到:', !!input);
+              if (input) break;
+            }
+          }
+          
           if (!input) {
             console.log('找不到输入框');
-            resolve({ success: false, error: '找不到输入框，请确保页面已完全加载' });
+            resolve({ success: false, error: '找不到输入框，请等待页面完全加载后重试' });
             return;
           }
           
@@ -319,7 +329,8 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           } else if (input.textContent !== undefined) {
             input.textContent = '';
           }
-          await new Promise(resolve => setTimeout(resolve, 500));
+          input.scrollIntoView({behavior: 'smooth', block: 'center'});
+          await new Promise(resolve => setTimeout(resolve, 1000));
           
           // 填充提示词
           if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
@@ -329,9 +340,10 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
           }
           input.dispatchEvent(new Event('input', { bubbles: true }));
           input.dispatchEvent(new Event('change', { bubbles: true }));
+          input.dispatchEvent(new Event('compositionend', { bubbles: true }));
           console.log('提示词填充完成');
           
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 2000));
           
           // 点击提交按钮
           let button = document.querySelector(submitSelector);
@@ -344,14 +356,28 @@ ipcMain.handle('auto-submit', async (event, { platformId, prompt }) => {
             }
           }
           
+          // 如果还是找不到，重试一次
+          if (!button) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            for (const sel of buttonSelectors) {
+              button = document.querySelector(sel);
+              console.log('重试按钮选择器', sel, '找到:', !!button);
+              if (button) break;
+            }
+          }
+          
           if (!button) {
             console.log('找不到提交按钮');
-            resolve({ success: false, error: '找不到提交按钮，请页面加载完成后再试' });
+            resolve({ success: false, error: '找不到提交按钮，请等待页面完全加载后重试' });
             return;
           }
           
           console.log('点击提交按钮');
+          button.scrollIntoView({behavior: 'smooth', block: 'center'});
+          await new Promise(resolve => setTimeout(resolve, 500));
           button.click();
+          // 有时候需要点击两次
+          setTimeout(() => button.click(), 500);
           resolve({ success: true });
         } catch (e) {
           console.error('JavaScript执行错误:', e);
